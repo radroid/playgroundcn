@@ -1,0 +1,28 @@
+---
+description: Specify the theme registry and component registry patterns for PlaygroundCn.
+globs:
+  - "lib/registry/**"
+alwaysApply: true
+---
+
+## Theme Registry
+
+- Define themes in `lib/registry/themes.ts` as:
+  - `{ id: string; name: string; css: string }`.
+- The `css` field must be a precompiled global CSS string:
+  - No `@tailwind` directives.
+  - Safe to inject directly as `/globals.css` content in Sandpack.
+
+## Component Registry
+
+- Define components in `lib/registry/components.ts` with entries that include:
+  - `id: string`
+  - `displayName: string`
+  - `category: string`
+  - `description: string`
+  - `sandpackTemplate: string` (usually `"react-ts"`)
+  - `dependencies: Record<string, string>`
+  - `examples: { id: string; name: string; code: string }[]`
+- These registries must be static data used at build time:
+  - No dynamic fetching or runtime mutation.
+

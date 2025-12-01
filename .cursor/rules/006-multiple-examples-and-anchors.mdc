@@ -1,0 +1,21 @@
+---
+description: Ensure multiple examples are rendered as stacked Sandpack instances with working anchors.
+globs:
+  - "app/component/**/page.tsx"
+alwaysApply: true
+---
+
+## Multiple Examples Pattern
+
+- Each component entry should define `examples: { id; name; code }[]`.
+- On `/component/[id]` pages:
+  - Render one `ComponentPlayground` per example, stacked vertically.
+  - Do not use tabs to switch between examples.
+
+## Anchors and Linking
+
+- For each example, add a heading with a stable `id`, e.g.:
+  - `<h2 id={example.id}>{example.name}</h2>`.
+- Allow URLs like `/component/button#outline` to scroll to the appropriate example.
+- Keep editor state isolated per example, but share the same selected theme across all examples on the page.
+

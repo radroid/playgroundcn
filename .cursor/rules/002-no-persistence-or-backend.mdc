@@ -1,0 +1,21 @@
+---
+description: Forbid persistence, backends, and auth to keep PlaygroundCn purely static and in-memory.
+globs:
+  - "**/*.ts"
+  - "**/*.tsx"
+alwaysApply: true
+---
+
+## No Persistence, Backend, or Auth
+
+- Do not use any persistence APIs:
+  - No `localStorage`, `sessionStorage`, cookies, IndexedDB, or similar storage.
+- Do not introduce any backend or database:
+  - No Next.js API routes.
+  - No Convex or other RPC/database layers.
+  - No calls that assume a custom server.
+- Do not add authentication:
+  - No login, signup, user accounts, or access control flows.
+- All edits and selections (code edits, theme choice, etc.) must live only in memory:
+  - Refreshing the page should reset everything to registry defaults.
+

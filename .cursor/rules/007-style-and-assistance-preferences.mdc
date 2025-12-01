@@ -1,0 +1,27 @@
+---
+description: Style and assistance preferences for working on PlaygroundCn in Cursor.
+globs:
+  - "**/*.ts"
+  - "**/*.tsx"
+  - "workspace.mdc"
+alwaysApply: true
+---
+
+## Code Style Preferences
+
+- Use **TypeScript** with explicit types for registries and component props.
+- Mark any component that uses hooks or state with `"use client"` at the top.
+- Prefer clear Tailwind class names over overly compressed utility chains.
+
+## Assistance Preferences
+
+- When refactoring or adding features, align with the existing patterns:
+  - Use the registry + Sandpack + theme-injection model already established.
+  - Prefer enhancing the existing layout and registry setup instead of creating new architectures.
+- When suggesting changes:
+  - Favor focused snippets over full-file rewrites unless necessary.
+  - Keep changes compatible with static export and the no-persistence rules.
+- Testing suggestions should prioritize:
+  - Running `pnpm lint` and `pnpm build` after structural changes.
+  - Verifying that component pages, Sandpack previews, theme switching, and example anchors work as expected.
+

@@ -1,0 +1,18 @@
+---
+description: Enforce static-only Next.js configuration and routing constraints.
+globs:
+  - "next.config.*"
+  - "app/**/page.tsx"
+alwaysApply: true
+---
+
+## Static Next.js Configuration
+
+- Set `output: 'export'` in `next.config.ts` and keep the app fully static-exportable.
+- Ensure all routes are statically generatable:
+  - Use `generateStaticParams` (or equivalent App Router patterns) for dynamic routes such as `app/component/[id]/page.tsx`.
+- Avoid server-only features:
+  - Do not introduce API routes.
+  - Do not use `getServerSideProps` or server-only runtime hooks.
+  - Avoid any feature that would require a Node server at runtime.
+

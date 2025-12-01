@@ -1,0 +1,32 @@
+---
+description: Define how Sandpack and ComponentPlayground should be structured and used.
+globs:
+  - "components/ComponentPlayground.tsx"
+  - "app/component/**/page.tsx"
+alwaysApply: true
+---
+
+## ComponentPlayground Contract
+
+- `ComponentPlayground` must be a **client component** (`"use client"`).
+- It should accept at least:
+  - `exampleCode: string`
+  - `template: string` (default `"react-ts"`)
+  - `dependencies: Record<string, string>`
+  - `globalsCss: string` (CSS string for `/globals.css`)
+  - `title: string`
+
+## Sandpack Files Map
+
+- Each Sandpack instance should define:
+  - `/App.tsx` — editable example code (`exampleCode`).
+  - `/index.tsx` — imports `"./globals.css"` and renders `<App />`.
+  - `/globals.css` — CSS content of the selected theme (no `@tailwind`).
+
+## Layout Expectations
+
+- Editor and preview should appear:
+  - Side-by-side on desktop.
+  - Stacked vertically on smaller screens.
+- All Sandpack logic must run on the client; do not attempt to SSR Sandpack.
+

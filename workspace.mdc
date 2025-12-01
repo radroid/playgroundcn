@@ -1,0 +1,115 @@
+---
+alwaysApply: true
+---
+
+## Workspace Purpose
+
+PlaygroundCn is a **static Next.js playground** for Shadcn UI components. It is a public, no-login site where users can browse components, edit example code live via Sandpack, and switch between CSS themes. The app must be fully **static-exportable** and run entirely on the client after initial load.
+
+## Hard Constraints (Always Enforced)
+
+- **Static-only Next.js**
+  - Next.js App Router with `output: 'export'` in `next.config.ts`.
+  - All routes must be statically generatable (use `generateStaticParams` for dynamic routes).
+  - No server-only features (no API routes, no `getServerSideProps`, and no runtime-only server hooks).
+
+- **No Persistence or Backend**
+  - No `localStorage`, `sessionStorage`, cookies, IndexedDB, or any other persistence layer.
+  - No backend/DB: do not add API routes, Convex, or external databases.
+  - No authentication or user accounts.
+  - All edits live only in memory; refreshing resets state to registry defaults.
+
+- **Tailwind Host-Only**
+  - Tailwind is used only in the host Next.js app (layout, sidebar, chrome).
+  - Sandpack previews receive **precompiled CSS strings**, never `@tailwind` directives.
+  - Never run Tailwind compiler or reference `tailwind.config` inside Sandpack code.
+
+## Architecture & File Structure Expectations
+
+- `app/layout.tsx`: root layout, sidebar + main shell using Tailwind.
+- `app/page.tsx`: home page listing components from a registry.
+- `app/component/[id]/page.tsx`: static component detail pages; must use `generateStaticParams`.
+- `components/Sidebar.tsx`: navigation sidebar that reads from a component registry.
+- `components/ComponentPlayground.tsx`: Sandpack wrapper for live code editing and preview.
+- `components/ThemeSelector.tsx`: theme switcher controlling Sandpack CSS.
+- `components/ui/*`: Shadcn UI primitives.
+- `lib/registry/types.ts`: shared TypeScript types for registry entries.
+- `lib/registry/components.ts`: static registry of components and their examples.
+- `lib/registry/themes.ts`: static registry of themes with precompiled CSS strings.
+
+If a file deviates from this structure, prefer to realign it instead of introducing new patterns.
+
+## Sandpack Integration Rules
+
+When implementing or modifying Sandpack integration (usually in `ComponentPlayground` and component pages):
+
+- `ComponentPlayground` should be a **client component** and accept at least:
+  - `exampleCode: string`
+  - `template: string` (default `"react-ts"`)
+  - `dependencies: Record<string, string>`
+  - `globalsCss: string` (CSS string from the theme registry)
+  - `title: string`
+- Sandpack files map must include:
+  - `/App.tsx` — editable example code (`exampleCode`).
+  - `/index.tsx` — imports `"./globals.css"` and renders `<App />`.
+  - `/globals.css` — theme CSS string (no `@tailwind` directives).
+- Layout behavior:
+  - Editor and preview side-by-side on desktop, stacked on small screens.
+  - All Sandpack logic must run client-side (no SSR of Sandpack).
+
+## Theme Model
+
+- Themes live in `lib/registry/themes.ts` as:
+  - `{ id: string; name: string; css: string }`.
+- `ThemeSelector` exposes a way to choose a theme by `id`.
+- The selected theme’s `css` string is passed as `globalsCss` into each `ComponentPlayground`.
+- Changing the theme must update the `/globals.css` content in all Sandpack instances on that page.
+
+## Component Registry & Multiple Examples
+
+- Component registry entries (in `lib/registry/components.ts`) should include:
+  - `id`, `displayName`, `category`, `description`.
+  - `sandpackTemplate` (usually `"react-ts"`).
+  - `dependencies: Record<string, string>`.
+  - `examples: { id: string; name: string; code: string }[]`.
+- Component detail pages should:
+  - Render **stacked** `ComponentPlayground` instances: one per example.
+  - Give each example a heading with `id={example.id}` so URLs like `/component/button#outline` scroll correctly.
+  - Keep editor state isolated per example but share the same selected theme.
+
+## Host App Tailwind Usage
+
+- Tailwind is configured only in the Next.js host app:
+  - `tailwind.config.ts` and `app/globals.css` with `@tailwind base/components/utilities`.
+- Use Tailwind for:
+  - Layout (sidebar/main split, spacing).
+  - Typography, theming, responsive behavior.
+  - Accessible focus states.
+- Never import or rely on Tailwind or `tailwind.config.ts` inside Sandpack files.
+
+## Development & Testing Guidance
+
+When making non-trivial changes, Cursor should:
+
+- Prefer small, incremental edits that keep static export working.
+- After structural changes, suggest running `pnpm lint` and `pnpm build` to ensure:
+  - Static pages build successfully.
+  - No server-only APIs or dynamic features are introduced.
+- Verify behavior against this checklist:
+  - Component pages load without runtime errors.
+  - Sandpack previews render and update in real-time as code is edited.
+  - Theme switching updates styles for all examples on the page.
+  - Multiple examples are visible as stacked sandpacks.
+  - URL anchors (`#example-id`) scroll to the correct example.
+
+## Style Preferences for Assistance
+
+- Use **TypeScript with strict types** and explicit prop/registry types.
+- Mark any component using hooks/state with `"use client"` at the top.
+- When proposing new code, show focused snippets instead of full files when possible.
+- When refactoring, prefer aligning with the existing registry and Sandpack patterns rather than inventing new abstractions.
+- Do not introduce:
+  - Backend logic or persistence.
+  - Authentication.
+  - Tabbed example UIs (keep examples stacked instead).
+

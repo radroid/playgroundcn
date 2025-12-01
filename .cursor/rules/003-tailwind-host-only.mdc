@@ -1,0 +1,22 @@
+---
+description: Restrict Tailwind CSS to the host Next.js app and prevent Tailwind usage inside Sandpack.
+globs:
+  - "tailwind.config.*"
+  - "app/**"
+  - "components/**"
+  - "lib/registry/**"
+alwaysApply: true
+---
+
+## Tailwind Usage Model
+
+- Tailwind must run **only** in the host Next.js app:
+  - Configure it via `tailwind.config.ts`.
+  - Import `@tailwind base; @tailwind components; @tailwind utilities;` only in `app/globals.css`.
+- Do not attempt to run Tailwind inside Sandpack:
+  - Do not use `@tailwind` directives in any CSS that will be loaded into Sandpack.
+  - Do not reference or import `tailwind.config` from Sandpack files.
+- Sandpack styling is provided via precompiled CSS strings:
+  - Theme CSS lives in `lib/registry/themes.ts` as plain CSS strings.
+  - Sandpack gets those strings as the content of `/globals.css` and never runs Tailwind itself.
+
