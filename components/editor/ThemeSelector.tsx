@@ -122,7 +122,7 @@ function ThemePreview({ themeName }: { themeName: string }) {
 
     if (!theme || !theme.cssVars) {
         return (
-            <div className="flex items-center gap-0.5 flex-shrink-0">
+            <div className="flex items-center gap-0.5 shrink-0">
                 <div className="w-2.5 h-2.5 rounded-full border border-border/50 bg-muted" />
                 <div className="w-2.5 h-2.5 rounded-full border border-border/50 bg-muted" />
                 <div className="w-2.5 h-2.5 rounded-full border border-border/50 bg-muted" />
@@ -148,7 +148,7 @@ function ThemePreview({ themeName }: { themeName: string }) {
     );
 
     return (
-        <div className="flex items-center gap-0.5 flex-shrink-0" title={theme.label || themeName}>
+        <div className="flex items-center gap-0.5 shrink-0" title={theme.label || themeName}>
             <div
                 className="w-2.5 h-2.5 rounded-full border border-border/50 dark:border-border shadow-sm"
                 style={{ backgroundColor: primary }}
@@ -177,7 +177,6 @@ export function ThemeSelector({
     currentTheme,
     onThemeChange,
     globalCss,
-    hasUnsavedChanges,
 }: ThemeSelectorProps) {
     // Detect the current theme from globalCss if provided
     const detectedTheme = useMemo(() => {
@@ -196,30 +195,12 @@ export function ThemeSelector({
         return currentTheme;
     }, [globalCss, detectedTheme, currentTheme]);
 
-    const [pendingTheme, setPendingTheme] = useState<string | null>(null);
-
     const handleThemeSelect = useCallback(
         (value: string) => {
             if (value === effectiveTheme) return;
-
-            // If there are unsaved changes, delegate confirmation to the toolbar
-            // via a custom event so we don't couple this component to alert-dialog UI.
-            if (hasUnsavedChanges) {
-                const event = new CustomEvent("tweakcn:confirm-theme-change", {
-                    detail: {
-                        nextTheme: value,
-                        apply: () => {
-                            onThemeChange(value);
-                        },
-                    },
-                });
-                window.dispatchEvent(event);
-                return;
-            }
-
             onThemeChange(value);
         },
-        [effectiveTheme, hasUnsavedChanges, onThemeChange]
+        [effectiveTheme, onThemeChange]
     );
 
     // Helper to get theme font
@@ -291,7 +272,7 @@ export function ThemeSelector({
                     value: "custom",
                     label: "Custom",
                     preview: (
-                        <div className="flex items-center gap-0.5 flex-shrink-0">
+                        <div className="flex items-center gap-0.5 shrink-0">
                             <div className="w-2.5 h-2.5 rounded-full border border-border/50 dark:border-border shadow-sm bg-purple-500" />
                             <div className="w-2.5 h-2.5 rounded-full border border-border/50 dark:border-border shadow-sm bg-pink-500" />
                             <div className="w-2.5 h-2.5 rounded-full border border-border/50 dark:border-border shadow-sm bg-orange-500" />

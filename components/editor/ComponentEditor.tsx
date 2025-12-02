@@ -323,6 +323,34 @@ function InternalToolbar({
         // Note: lastSavedFiles will be updated when saveStatus becomes 'saved'
     }, [onSave, onCodeChange, sandpack.files]);
 
+    // When the theme changes, save the current files into our in-memory
+    // "browser cache" (lastSavedFiles), then delegate to the parent
+    // onThemeChange handler.
+    const handleThemeChangeWithSave = useCallback(
+        (newTheme: string) => {
+            // Snapshot current Sandpack files
+            const savedFiles: Record<string, { code: string }> = {};
+            for (const [path, file] of Object.entries(sandpack.files)) {
+                const fileCode = typeof file === "string" ? file : file.code;
+                savedFiles[path] = { code: fileCode };
+            }
+
+            // Update local last saved state
+            if (onLastSavedUpdate) {
+                onLastSavedUpdate(savedFiles);
+            }
+
+            // Re-apply saved files to Sandpack to ensure they are in sync
+            for (const [path, file] of Object.entries(savedFiles)) {
+                sandpack.updateFile(path, file.code);
+            }
+
+            // Finally, propagate the theme change
+            onThemeChange(newTheme);
+        },
+        [onLastSavedUpdate, onThemeChange, sandpack.files, sandpack.updateFile]
+    );
+
     const handleReset = useCallback(() => {
         if (!lastSavedFiles) {
             // Fallback to resetting to initial if no saved state
@@ -379,7 +407,7 @@ function InternalToolbar({
             componentDisplayName={componentDisplayName}
             componentDescription={componentDescription}
             currentTheme={currentTheme}
-            onThemeChange={onThemeChange}
+            onThemeChange={handleThemeChangeWithSave}
             saveStatus={saveStatus}
             readOnly={readOnly}
             onReset={handleReset}
@@ -416,7 +444,8 @@ function useSandpackFiles(
     previewCode: string,
     effectiveCss: string,
     isDark: boolean,
-    registryDependenciesCode?: Record<string, { code: string; dependencies?: Record<string, string> }>
+    registryDependenciesCode?: Record<string, { code: string; dependencies?: Record<string, string> }>,
+    savedFiles?: Record<string, { code: string }>
 ) {
     const registryFiles = useMemo(() => {
         if (!registryDependenciesCode) return {};
@@ -436,22 +465,47 @@ function useSandpackFiles(
     }, [registryDependenciesCode]);
 
     return useMemo(
-        () => ({
-            "/App.tsx": getAppCode(isDark),
-            "/Preview.tsx": previewCode,
-            [componentPath]: code,
-            "/lib/utils.ts": {
-                code: UTILS_CODE,
-                hidden: true,
-            },
-            "/styles/globals.css": effectiveCss,
-            "/tsconfig.json": {
-                code: TSCONFIG_CODE,
-                hidden: true,
-            },
-            ...registryFiles,
-        }),
-        [componentPath, isDark, effectiveCss, code, previewCode, registryFiles]
+        () => {
+            // Prefer any cached/saved versions of user-editable files.
+            const resolvedPreviewCode =
+                savedFiles?.["/Preview.tsx"]?.code ?? previewCode;
+            const resolvedComponentCode =
+                savedFiles?.[componentPath]?.code ?? code;
+
+            const resolvedRegistryFiles = Object.entries(registryFiles).reduce(
+                (acc, [path, file]) => {
+                    const cached = savedFiles?.[path];
+                    if (cached) {
+                        acc[path] = {
+                            ...file,
+                            code: cached.code,
+                        };
+                    } else {
+                        acc[path] = file;
+                    }
+                    return acc;
+                },
+                {} as Record<string, { code: string; hidden: boolean }>
+            );
+
+            return {
+                "/App.tsx": getAppCode(isDark),
+                "/Preview.tsx": resolvedPreviewCode,
+                [componentPath]: resolvedComponentCode,
+                "/lib/utils.ts": {
+                    code: UTILS_CODE,
+                    hidden: true,
+                },
+                // Always use the currently generated/effective CSS for the active theme
+                "/styles/globals.css": effectiveCss,
+                "/tsconfig.json": {
+                    code: TSCONFIG_CODE,
+                    hidden: true,
+                },
+                ...resolvedRegistryFiles,
+            };
+        },
+        [componentPath, isDark, effectiveCss, code, previewCode, registryFiles, savedFiles]
     );
 }
 
@@ -596,7 +650,15 @@ export default function ComponentEditor({
 
     // Sandpack configuration - files should only update when source data changes.
     // Sandpack will handle live updates internally when user edits in the editor.
-    const files = useSandpackFiles(componentPath, code, previewCode, effectiveCss, isDark, registryDependenciesCode);
+    const files = useSandpackFiles(
+        componentPath,
+        code,
+        previewCode,
+        effectiveCss,
+        isDark,
+        registryDependenciesCode,
+        lastSavedFiles
+    );
     const options = useSandpackOptions(componentPath, registryDependenciesCode);
     const customSetup = useSandpackSetup(dependencies, registryDependenciesCode);
 
@@ -624,9 +686,9 @@ export default function ComponentEditor({
         }
     }, [sourceDataKey, files]);
 
-    // Initialize / re-baseline last saved files when source data or theme changes.
-    // This ensures that after a theme/style change (which resets code), we treat
-    // the new code as the "no changes" baseline so hasChanges becomes false again.
+    // Initialize / re-baseline last saved files when the underlying source data
+    // changes. Theme changes are handled separately so we don't overwrite the
+    // in-memory cache of the user's current edits.
     useEffect(() => {
         if (files && Object.keys(files).length > 0) {
             // Create a deep copy of the files for last saved state
