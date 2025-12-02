@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { motion } from "motion/react";
 import { components } from "../lib/registry/components";
 import {
   Sidebar as SidebarRoot,
@@ -32,7 +31,9 @@ export function Sidebar() {
     <SidebarRoot collapsible="offcanvas">
       <SidebarHeader>
         <div className="flex h-10 items-center px-2 text-sm font-semibold">
-          PlaygroundCn
+          <Link href="/" className="hover:underline">
+            PlaygroundCn
+          </Link>
         </div>
       </SidebarHeader>
       <SidebarContent>
@@ -56,19 +57,12 @@ export function Sidebar() {
                       }
                     }}
                   >
-                    <motion.div
-                      whileHover={{
-                        backgroundColor: "rgba(15, 23, 42, 0.06)",
-                      }}
-                      transition={{
-                        type: "tween",
-                        ease: "easeInOut",
-                        duration: 0.18,
-                      }}
-                      className="rounded-md"
+                    <Link
+                      href={item.href}
+                      className="flex w-full items-center"
                     >
-                      <Link href={item.href}>{item.label}</Link>
-                    </motion.div>
+                      {item.label}
+                    </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               );
