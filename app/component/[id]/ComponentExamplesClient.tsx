@@ -49,7 +49,7 @@ export function ComponentExamplesClient({
           >
             {example.name}
           </h2>
-          <div className="h-[600px] border rounded-lg overflow-hidden">
+          <div className="border rounded-lg overflow-hidden">
             <ComponentEditor
               code={componentCode || ""}
               previewCode={example.code}

@@ -115,65 +115,18 @@ function CopyCodeButton() {
 }
 
 // =============================================================================
-// File State Saver Component (saves user edits before Sandpack unmounts)
+// CSS Updater Component (updates globals.css when CSS theme changes)
 // =============================================================================
 
-function FileStateSaver({
-    savedFilesRef,
-}: {
-    savedFilesRef: React.MutableRefObject<Record<string, string> | null>;
-}) {
-    const { sandpack } = useSandpack();
-
-    // Save user edits on every change so we have the latest state before unmount
-    useEffect(() => {
-        const files: Record<string, string> = {};
-        for (const [path, file] of Object.entries(sandpack.files)) {
-            files[path] = typeof file === 'string' ? file : file.code;
-        }
-        savedFilesRef.current = files;
-    }, [sandpack.files, savedFilesRef]);
-
-    return null;
-}
-
-// =============================================================================
-// File State Restorer Component (restores user edits after Sandpack remounts)
-// =============================================================================
-
-function FileStateRestorer({
-    savedFilesRef,
+function CssUpdater({
     effectiveCss,
 }: {
-    savedFilesRef: React.MutableRefObject<Record<string, string> | null>;
     effectiveCss: string;
 }) {
     const { sandpack } = useSandpack();
-    const hasRestoredRef = useRef(false);
-
-    // Restore user edits after remount (runs once per mount)
-    useEffect(() => {
-        if (savedFilesRef.current && !hasRestoredRef.current) {
-            const savedFiles = savedFilesRef.current;
-            
-            // Restore user-edited files (Preview.tsx and component files)
-            // But NOT App.tsx or globals.css - those should use new theme values
-            for (const [path, code] of Object.entries(savedFiles)) {
-                // Skip theme-related files - they should use new values
-                if (path === "/App.tsx" || path === "/styles/globals.css") {
-                    continue;
-                }
-                // Restore user edits for code files
-                sandpack.updateFile(path, code);
-            }
-            
-            hasRestoredRef.current = true;
-            savedFilesRef.current = null;
-        }
-    }, [sandpack, savedFilesRef]);
-
-    // Update globals.css when CSS changes (for style theme changes, not dark mode)
     const prevCssRef = useRef(effectiveCss);
+
+    // Update globals.css when CSS changes (for style theme changes)
     useEffect(() => {
         if (prevCssRef.current !== effectiveCss) {
             sandpack.updateFile("/styles/globals.css", effectiveCss);
@@ -689,19 +642,15 @@ export default function ComponentEditor({
 
     // Note: lastSavedFiles is updated in InternalEditor when saveStatus becomes 'saved'
 
-    // Ref to store user edits before theme change causes remount
-    // FileStateSaver continuously updates this, FileStateRestorer uses it after remount
-    const savedUserFilesRef = useRef<Record<string, string> | null>(null);
-
     // Key for SandpackProvider - include isDark so Sandpack remounts with correct editor theme
-    // User edits are preserved via savedUserFilesRef and FileStateRestorer
+    // Note: Remounting will reset user edits, which is acceptable for theme changes
     const registryHash = registryDependenciesCode
         ? Object.keys(registryDependenciesCode).join(',')
         : '';
     const providerKey = `sandpack-${sourceDataKey}-${isDark ? "dark" : "light"}-${registryHash}`;
 
     return (
-        <div className={readOnly ? "h-full w-full flex flex-col" : "h-full w-full flex flex-col"}>
+        <div className="w-full flex flex-col">
             <SandpackProvider
                 key={providerKey}
                 template="react-ts"
@@ -709,14 +658,10 @@ export default function ComponentEditor({
                 files={files}
                 options={options}
                 customSetup={customSetup}
-                style={{ height: "100%", display: "flex", flexDirection: "column" }}
+                style={{ display: "flex", flexDirection: "column" }}
             >
-                {/* File State Management - saves edits before unmount, restores after remount */}
-                <FileStateSaver savedFilesRef={savedUserFilesRef} />
-                <FileStateRestorer 
-                    savedFilesRef={savedUserFilesRef} 
-                    effectiveCss={effectiveCss}
-                />
+                {/* CSS Updater - updates globals.css when CSS theme changes (not dark mode) */}
+                <CssUpdater effectiveCss={effectiveCss} />
 
                 {/* Toolbar - outside SandpackLayout but inside SandpackProvider */}
                 {!readOnly && (
@@ -736,7 +681,7 @@ export default function ComponentEditor({
                 )}
 
                 {/* Editor and Preview using SandpackLayout for proper live updates */}
-                <SandpackLayout style={{ flex: 1, minHeight: 0, display: "flex", overflow: "hidden" }}>
+                <SandpackLayout style={{ height: "500px", display: "flex", overflow: "hidden" }}>
                     {/* Editor Panel */}
                     <div
                         className={readOnly ? "readonly-editor-container" : "editor-container"}
@@ -747,7 +692,6 @@ export default function ComponentEditor({
                             minWidth: 0,
                             minHeight: 0,
                             height: "100%",
-                            overflow: "hidden",
                             position: "relative"
                         }}
                     >
@@ -763,16 +707,16 @@ export default function ComponentEditor({
                             wrapContent={false}
                             readOnly={readOnly}
                             style={{
-                                flex: 1,
-                                height: "100%",
+                                flex: "1 1 auto",
                                 minHeight: 0,
-                                overflow: "hidden"
+                                height: "100%",
+                                width: "100%"
                             }}
                         />
                     </div>
 
                     {/* Preview Panel with styling */}
-                    <div className="flex-1 p-4 bg-muted/30 flex items-center justify-center" style={{ minWidth: 0, minHeight: 0 }}>
+                    <div className="flex-1 p-4 bg-muted/30 flex items-center justify-center" style={{ minWidth: 0, minHeight: 0, overflow: "hidden" }}>
                         <div className="h-full w-full bg-background rounded-lg overflow-hidden shadow-sm border border-border/50">
                             <SandpackPreview
                                 style={{ height: "100%", width: "100%" }}

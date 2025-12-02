@@ -40,7 +40,7 @@ export default function RootLayout({
             <ThemeToggle />
           </div>
           <SidebarInset>
-            <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 py-4">
+            <div className="mx-auto flex w-full max-w-6xl flex-col px-4 py-4">
               <div className="mb-4 flex items-center gap-2">
                 <SidebarTrigger />
               </div>

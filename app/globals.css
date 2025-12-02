@@ -172,3 +172,21 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Ensure Monaco Editor (used by Sandpack) can scroll vertically */
+.editor-container [class*="sp-code-editor"],
+.readonly-editor-container [class*="sp-code-editor"] {
+  height: 100%;
+}
+
+.editor-container [class*="monaco-editor"],
+.readonly-editor-container [class*="monaco-editor"] {
+  height: 100%;
+}
+
+/* Ensure Monaco's scrollable viewport is enabled */
+.editor-container .monaco-scrollable-element > .monaco-editor-background,
+.readonly-editor-container .monaco-scrollable-element > .monaco-editor-background {
+  height: auto;
+  min-height: 100%;
+}
