@@ -1,4 +1,9 @@
 import type { ComponentEntry } from "./types";
+import {
+  BASE_DEPENDENCIES,
+  COMPONENT_SPECIFIC_DEPS,
+  COMPONENT_REGISTRY_DEPS,
+} from "./component-dependencies";
 
 /**
  * Static registry of Shadcn UI components used by the playground.
@@ -30,130 +35,98 @@ import type { ComponentEntry } from "./types";
  * - Transform the code to Sandpack-compatible format
  * - Generate example IDs and names (first preview = "default", others = "Preview 2", etc.)
  *
- * As you add more rows from the CSV, follow the same structure used for the
- * `button` and `card` entries below. Examples here will be used as fallback
- * if no preview files exist.
+ * Examples here will be used as fallback if no preview files exist.
  */
-export const components: ComponentEntry[] = [
-  {
-    id: "button",
-    displayName: "Button",
-    category: "ui",
-    description: "Shadcn ui: Button",
+
+// Helper function to create component entry
+function createEntry(
+  id: string,
+  displayName: string,
+  category: string = "ui",
+  description?: string
+): ComponentEntry {
+  const specificDeps = COMPONENT_SPECIFIC_DEPS[id] || {};
+  const registryDeps = COMPONENT_REGISTRY_DEPS[id] || [];
+
+  return {
+    id,
+    displayName,
+    category,
+    description: description || `Shadcn ui: ${displayName}`,
     sandpackTemplate: "react-ts",
     dependencies: {
-      react: "19.2.0",
-      "react-dom": "19.2.0",
-      "@radix-ui/react-slot": "^1.0.0",
-      "class-variance-authority": "^0.7.1",
-      "lucide-react": "^0.555.0",
+      ...BASE_DEPENDENCIES,
+      ...specificDeps,
     },
-    registryDependencies: [],
-    files: [{ path: "ui/button.tsx", type: "registry:ui" }],
+    registryDependencies: registryDeps.length > 0 ? registryDeps : undefined,
+    files: [{ path: `ui/${id}.tsx`, type: "registry:ui" }],
     examples: [
       {
         id: "default",
         name: "Default",
-        code: `import { ArrowUpIcon } from "lucide-react";
-import { Button } from "@/components/ui/button";
-
+        code: `// Preview files will be used if they exist
+// This is a fallback example
 export default function App() {
-  return (
-    <div className="flex flex-wrap items-center gap-2 md:flex-row">
-      <Button variant="outline">Button</Button>
-      <Button variant="outline" size="icon" aria-label="Submit">
-        <ArrowUpIcon />
-      </Button>
-    </div>
-  );
-}
-`,
+  return <div>${displayName} Component</div>;
+}`,
       },
     ],
-  },
-  {
-    id: "card",
-    displayName: "Card",
-    category: "ui",
-    description: "Shadcn ui: Card",
-    sandpackTemplate: "react-ts",
-    dependencies: {
-      react: "19.2.0",
-      "react-dom": "19.2.0",
-      "@radix-ui/react-slot": "^1.0.0",
-      "@radix-ui/react-label": "^2.1.1",
-    },
-    registryDependencies: ["button", "input", "label"],
-    files: [{ path: "ui/card.tsx", type: "registry:ui" }],
-    examples: [
-      {
-        id: "login",
-        name: "Login form",
-        code: `import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-
-export default function App() {
-  return (
-    <Card className="w-full max-w-sm">
-      <CardHeader>
-        <CardTitle>Login to your account</CardTitle>
-        <CardDescription>
-          Enter your email below to login to your account
-        </CardDescription>
-        <CardAction>
-          <Button variant="link">Sign Up</Button>
-        </CardAction>
-      </CardHeader>
-      <CardContent>
-        <form>
-          <div className="flex flex-col gap-6">
-            <div className="grid gap-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="m@example.com"
-                required
-              />
-            </div>
-            <div className="grid gap-2">
-              <div className="flex items-center">
-                <Label htmlFor="password">Password</Label>
-                <a
-                  href="#"
-                  className="ml-auto inline-block text-sm underline-offset-4 hover:underline"
-                >
-                  Forgot your password?
-                </a>
-              </div>
-              <Input id="password" type="password" required />
-            </div>
-          </div>
-        </form>
-      </CardContent>
-      <CardFooter className="flex-col gap-2">
-        <Button type="submit" className="w-full">
-          Login
-        </Button>
-        <Button variant="outline" className="w-full">
-          Login with Google
-        </Button>
-      </CardFooter>
-    </Card>
-  );
+  };
 }
-`,
-      },
-    ],
-  },
+
+export const components: ComponentEntry[] = [
+  createEntry("accordion", "Accordion"),
+  createEntry("alert", "Alert"),
+  createEntry("alert-dialog", "Alert Dialog"),
+  createEntry("aspect-ratio", "Aspect Ratio"),
+  createEntry("avatar", "Avatar"),
+  createEntry("badge", "Badge"),
+  createEntry("breadcrumb", "Breadcrumb"),
+  createEntry("button", "Button"),
+  createEntry("button-group", "Button Group"),
+  createEntry("calendar", "Calendar"),
+  createEntry("card", "Card"),
+  createEntry("carousel", "Carousel"),
+  createEntry("chart", "Chart"),
+  createEntry("checkbox", "Checkbox"),
+  createEntry("collapsible", "Collapsible"),
+  createEntry("combobox", "Combobox"),
+  createEntry("command", "Command"),
+  createEntry("context-menu", "Context Menu"),
+  createEntry("dialog", "Dialog"),
+  createEntry("drawer", "Drawer"),
+  createEntry("dropdown-menu", "Dropdown Menu"),
+  createEntry("empty", "Empty"),
+  createEntry("field", "Field"),
+  createEntry("form", "Form"),
+  createEntry("hover-card", "Hover Card"),
+  createEntry("input", "Input"),
+  createEntry("input-group", "Input Group"),
+  createEntry("input-otp", "Input OTP"),
+  createEntry("item", "Item"),
+  createEntry("kbd", "Kbd"),
+  createEntry("label", "Label"),
+  createEntry("menubar", "Menubar"),
+  createEntry("navigation-menu", "Navigation Menu"),
+  createEntry("pagination", "Pagination"),
+  createEntry("popover", "Popover"),
+  createEntry("progress", "Progress"),
+  createEntry("radio-group", "Radio Group"),
+  createEntry("resizable", "Resizable"),
+  createEntry("scroll-area", "Scroll Area"),
+  createEntry("select", "Select"),
+  createEntry("separator", "Separator"),
+  createEntry("sheet", "Sheet"),
+  createEntry("sidebar", "Sidebar"),
+  createEntry("skeleton", "Skeleton"),
+  createEntry("slider", "Slider"),
+  createEntry("sonner", "Sonner"),
+  createEntry("spinner", "Spinner"),
+  createEntry("switch", "Switch"),
+  createEntry("table", "Table"),
+  createEntry("tabs", "Tabs"),
+  createEntry("textarea", "Textarea"),
+  createEntry("toggle", "Toggle"),
+  createEntry("toggle-group", "Toggle Group"),
+  createEntry("tooltip", "Tooltip"),
 ];
