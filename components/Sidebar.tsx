@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { motion } from "motion/react";
 import { components } from "../lib/registry/components";
 import {
   Sidebar as SidebarRoot,
@@ -18,8 +19,6 @@ type SidebarItem = {
   href: string;
   label: string;
 };
-
-const NAV_ITEMS: SidebarItem[] = [{ href: "/", label: "Home" }];
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -38,34 +37,11 @@ export function Sidebar() {
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
-          <SidebarMenu>
-            {NAV_ITEMS.map((item) => {
-              const isActive = pathname === item.href;
-              return (
-                <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={isActive}
-                    onClick={() => {
-                      if (typeof window !== "undefined") {
-                        window.dispatchEvent(new Event("tweakcn:before-component-change"));
-                      }
-                    }}
-                  >
-                    <Link href={item.href}>{item.label}</Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              );
-            })}
-          </SidebarMenu>
-        </SidebarGroup>
-
-        <SidebarGroup>
           <SidebarGroupLabel>Components</SidebarGroupLabel>
           <SidebarMenu>
             {registryItems.map((item) => {
               const isActive = pathname === item.href;
+
               return (
                 <SidebarMenuItem key={item.href}>
                   <SidebarMenuButton
@@ -74,11 +50,25 @@ export function Sidebar() {
                     isActive={isActive}
                     onClick={() => {
                       if (typeof window !== "undefined") {
-                        window.dispatchEvent(new Event("tweakcn:before-component-change"));
+                        window.dispatchEvent(
+                          new Event("tweakcn:before-component-change"),
+                        );
                       }
                     }}
                   >
-                    <Link href={item.href}>{item.label}</Link>
+                    <motion.div
+                      whileHover={{
+                        backgroundColor: "rgba(15, 23, 42, 0.06)",
+                      }}
+                      transition={{
+                        type: "tween",
+                        ease: "easeInOut",
+                        duration: 0.18,
+                      }}
+                      className="rounded-md"
+                    >
+                      <Link href={item.href}>{item.label}</Link>
+                    </motion.div>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               );

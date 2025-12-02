@@ -31,7 +31,7 @@ export function ThemeToggle() {
       defaultValue="system"
       value={theme}
       onChange={handleChange}
-      className="border border-zinc-200 bg-zinc-50/80 dark:border-zinc-800 dark:bg-zinc-900/80"
+      className="border border-zinc-100 bg-zinc-50/80 cursor-pointer dark:border-zinc-900 dark:bg-zinc-900/80"
     />
   );
 }

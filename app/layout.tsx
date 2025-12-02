@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Sidebar } from "../components/Sidebar";
-import { ThemeToggle } from "../components/ThemeToggle";
 import { GlobalSearch } from "../components/GlobalSearch";
+import { HeaderActions } from "../components/HeaderActions";
 import {
   SidebarInset,
   SidebarProvider,
@@ -38,7 +38,7 @@ export default function RootLayout({
         <SidebarProvider>
           <Sidebar />
           <div className="fixed right-4 top-4 z-40">
-            <ThemeToggle />
+            <HeaderActions />
           </div>
           <SidebarInset>
             <div className="mx-auto flex w-full max-w-6xl flex-col px-4 py-4">
