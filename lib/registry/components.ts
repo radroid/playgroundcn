@@ -7,8 +7,32 @@ import type { ComponentEntry } from "./types";
  * file: we keep only the metadata and example code here, while the actual
  * implementations live in `components/ui/*` and are managed by the Shadcn CLI.
  *
+ * PREVIEW FILES SYSTEM:
+ * =====================
+ * Instead of embedding example code inline in this file, you can create preview
+ * files in `components/previews/`. The system will automatically load and use
+ * preview files if they exist, taking precedence over examples defined here.
+ *
+ * Naming convention for preview files:
+ * - Single preview: `{componentId}-preview.tsx`
+ * - Multiple previews: `{componentId}-preview.tsx`, `{componentId}-preview-2.tsx`, etc.
+ *
+ * Example structure for accordion-preview.tsx:
+ * ```tsx
+ * export function AccordionDemo() {
+ *   return <Accordion>...</Accordion>;
+ * }
+ * export default AccordionDemo;
+ * ```
+ *
+ * The system will automatically:
+ * - Find all preview files for a component
+ * - Transform the code to Sandpack-compatible format
+ * - Generate example IDs and names (first preview = "default", others = "Preview 2", etc.)
+ *
  * As you add more rows from the CSV, follow the same structure used for the
- * `button` and `card` entries below.
+ * `button` and `card` entries below. Examples here will be used as fallback
+ * if no preview files exist.
  */
 export const components: ComponentEntry[] = [
   {

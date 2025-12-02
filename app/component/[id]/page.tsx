@@ -6,6 +6,8 @@ import {
   getComponentFileContent,
   getRegistryDependenciesCode,
 } from "@/lib/registry/reader";
+import { getPreviewExamples } from "@/lib/registry/preview-reader";
+import type { ComponentEntry } from "@/lib/registry/types";
 
 type ComponentPageParams = {
   id: string;
@@ -64,9 +66,18 @@ export default async function ComponentPage({ params }: ComponentPageProps) {
     };
   }
 
+  // Load preview examples from preview files
+  const previewExamples = await getPreviewExamples(id);
+  
+  // Create entry with merged examples: prefer preview examples if they exist, otherwise use registry examples
+  const entryWithExamples: ComponentEntry = {
+    ...entry,
+    examples: previewExamples.length > 0 ? previewExamples : entry.examples,
+  };
+
   return (
     <ComponentExamplesClient
-      entry={entry}
+      entry={entryWithExamples}
       themes={themes}
       componentCode={componentCode}
       componentPath={componentPath}
