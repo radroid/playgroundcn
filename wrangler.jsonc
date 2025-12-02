@@ -1,0 +1,17 @@
+{
+  // Name of your Worker
+  "name": "playgroundcn",
+
+  // Keep this in sync with your deployment date when needed
+  "compatibility_date": "2025-12-02",
+
+  // Serve the static Next.js export from the "out" directory
+  "assets": {
+    "directory": "./out"
+  },
+
+  // Enable workers.dev preview URL by default; you can configure routes in the dashboard
+  "workers_dev": true
+}
+
+
