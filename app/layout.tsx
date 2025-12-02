@@ -42,10 +42,8 @@ export default function RootLayout({
           </div>
           <SidebarInset>
             <div className="mx-auto flex w-full max-w-6xl flex-col px-4 py-4">
-              <div className="mb-4 flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <SidebarTrigger />
-                </div>
+              <div className="mb-4 flex items-center gap-6">
+                <SidebarTrigger />
                 <div className="w-full max-w-xs">
                   <GlobalSearch />
                 </div>
