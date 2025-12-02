@@ -14,7 +14,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import SaveStatusIndicator, { SaveStatus } from "./SaveStatusIndicator";
 import { EditorToolbar } from "./EditorToolbar";
 import { DEFAULT_GLOBAL_CSS, getThemeCss } from "./theme-generator";
-import { getAppCode, UTILS_CODE, TSCONFIG_CODE } from "@/lib/sandpack/sandpack-app-template";
+import { getAppCode, UTILS_CODE, TSCONFIG_CODE, USE_MOBILE_CODE } from "@/lib/sandpack/sandpack-app-template";
 import { getComponentCache, setComponentCache } from "./cache";
 
 // =============================================================================
@@ -521,6 +521,10 @@ function useSandpackFiles(
                 "/styles/globals.css": effectiveCss,
                 "/tsconfig.json": {
                     code: TSCONFIG_CODE,
+                    hidden: true,
+                },
+                "/hooks/use-mobile.ts": {
+                    code: USE_MOBILE_CODE,
                     hidden: true,
                 },
                 ...resolvedRegistryFiles,

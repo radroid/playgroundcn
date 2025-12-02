@@ -9,6 +9,8 @@ export const BASE_DEPENDENCIES = {
   react: "19.2.0",
   "react-dom": "19.2.0",
   "next": "^16.0.6",
+  "cmdk": "^1.1.1",
+  "@radix-ui/react-slot": "^1.0.0",
 };
 
 // Map of component IDs to their specific dependencies (excluding base deps)
@@ -69,10 +71,12 @@ export const COMPONENT_SPECIFIC_DEPS: Record<string, Record<string, string>> = {
   },
   combobox: {
     "cmdk": "^1.1.1",
+    "@radix-ui/react-slot": "^1.0.0",
     "lucide-react": "^0.555.0",
   },
   command: {
     "cmdk": "^1.1.1",
+    "@radix-ui/react-slot": "^1.0.0",
     "lucide-react": "^0.555.0",
   },
   "context-menu": {
@@ -85,6 +89,7 @@ export const COMPONENT_SPECIFIC_DEPS: Record<string, Record<string, string>> = {
   },
   drawer: {
     "vaul": "^1.1.2",
+    recharts: "2.15.4",
   },
   "dropdown-menu": {
     "@radix-ui/react-dropdown-menu": "^2.1.16",
@@ -164,6 +169,7 @@ export const COMPONENT_SPECIFIC_DEPS: Record<string, Record<string, string>> = {
   },
   spinner: {
     "lucide-react": "^0.555.0",
+    "class-variance-authority": "^0.7.1",
   },
   switch: {
     "@radix-ui/react-switch": "^1.2.6",
@@ -175,6 +181,7 @@ export const COMPONENT_SPECIFIC_DEPS: Record<string, Record<string, string>> = {
   textarea: {},
   toggle: {
     "@radix-ui/react-toggle": "^1.1.10",
+    "class-variance-authority": "^0.7.1",
   },
   "toggle-group": {
     "@radix-ui/react-toggle-group": "^1.1.11",
@@ -206,25 +213,26 @@ export const COMPONENT_REGISTRY_DEPS: Record<string, string[]> = {
   carousel: ["button", "card"], // imports Button; preview uses: card
   checkbox: ["label"], // preview uses: label
   collapsible: ["button"], // preview uses: button
-  combobox: ["button", "command", "popover"], // imports all three
+  combobox: ["button", "command", "popover", "dialog"], // imports all four
   command: ["dialog"], // imports Dialog
   dialog: ["button", "input", "label"], // preview uses: button, input, label
   drawer: ["button"], // preview uses: button
   "dropdown-menu": ["button"], // preview uses: button
   empty: ["button"], // preview uses: button
   field: ["label", "separator", "button", "checkbox", "input", "select", "textarea"], // imports Label, Separator; preview uses: button, checkbox, input, select, textarea
-  form: ["label", "button", "input"], // imports Label; preview uses: button, input
+  form: ["label", "button", "input", "sonner"], // imports Label; preview uses: button, input
   "hover-card": ["avatar", "button"], // preview uses: avatar, button
   "input-group": ["button", "input", "textarea", "dropdown-menu", "separator", "tooltip"], // imports Button, Input, Textarea; preview uses: dropdown-menu, separator, tooltip
   item: ["separator", "button"], // imports Separator; preview uses: button
   label: ["checkbox"], // preview uses: checkbox
+  pagination: ["button"], // preview uses: button
   popover: ["button", "input", "label"], // preview uses: button, input, label
   "radio-group": ["label"], // preview uses: label
   "scroll-area": ["separator"], // preview uses: separator
   sheet: ["button", "input", "label"], // preview uses: button, input, label
   sidebar: ["button", "input", "separator", "sheet", "skeleton", "tooltip"], // imports all
   sonner: ["button"], // preview uses: button
-  spinner: ["item"], // preview uses: item
+  spinner: ["item", "separator"], // preview uses: item
   switch: ["label"], // preview uses: label
   tabs: ["button", "card", "input", "label"], // preview uses: button, card, input, label
   "toggle-group": ["toggle"], // imports toggleVariants

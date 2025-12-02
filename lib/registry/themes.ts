@@ -125,6 +125,129 @@ body {
   align-items: center;
   gap: 0.75rem;
 }
+
+/* Calendar (data-slot="calendar") */
+[data-slot="calendar"] {
+  --cell-size: 2.25rem;
+  border-radius: var(--radius, 0.75rem);
+  border: 1px solid var(--border);
+  background-color: var(--card);
+  color: var(--card-foreground);
+  padding: 0.75rem;
+  box-shadow: var(--shadow, 0 1px 3px rgba(0,0,0,0.08));
+}
+
+[data-slot="calendar"] .rdp {
+  width: -moz-fit-content;
+  width: fit-content;
+}
+
+[data-slot="calendar"] .rdp-months {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  position: relative;
+}
+
+@media (min-width: 768px) {
+  [data-slot="calendar"] .rdp-months {
+    flex-direction: row;
+  }
+}
+
+[data-slot="calendar"] .rdp-month {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+[data-slot="calendar"] .rdp-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  padding-inline: 0.25rem;
+}
+
+[data-slot="calendar"] .rdp-caption {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--cell-size);
+  width: 100%;
+}
+
+[data-slot="calendar"] .rdp-caption_dropdowns {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  height: var(--cell-size);
+}
+
+[data-slot="calendar"] .rdp-head {
+  display: flex;
+  width: 100%;
+}
+
+[data-slot="calendar"] .rdp-head_row {
+  display: flex;
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+[data-slot="calendar"] .rdp-head_cell {
+  flex: 1;
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--muted-foreground);
+}
+
+[data-slot="calendar"] .rdp-row {
+  display: flex;
+  width: 100%;
+  margin-top: 0.25rem;
+}
+
+[data-slot="calendar"] .rdp-cell {
+  position: relative;
+  flex: 1;
+  padding: 0;
+}
+
+[data-slot="calendar"] .rdp-day {
+  width: 100%;
+  height: 100%;
+  min-width: var(--cell-size);
+}
+
+[data-slot="calendar"] .rdp-day_today button {
+  background-color: color-mix(in srgb, var(--accent) 80%, transparent);
+  color: var(--accent-foreground);
+  border-radius: 0.375rem;
+}
+
+[data-slot="calendar"] .rdp-day_selected button {
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+  border-radius: 0.375rem;
+}
+
+[data-slot="calendar"] .rdp-day_outside {
+  color: var(--muted-foreground);
+}
+
+[data-slot="calendar"] .rdp-day_disabled {
+  color: var(--muted-foreground);
+  opacity: 0.5;
+}
 `;
 
 export const themes: ThemeEntry[] = registry.items.map((item: any) => ({
