@@ -44,7 +44,15 @@ export function Sidebar() {
               const isActive = pathname === item.href;
               return (
                 <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton asChild isActive={isActive}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={isActive}
+                    onClick={() => {
+                      if (typeof window !== "undefined") {
+                        window.dispatchEvent(new Event("tweakcn:before-component-change"));
+                      }
+                    }}
+                  >
                     <Link href={item.href}>{item.label}</Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -60,7 +68,16 @@ export function Sidebar() {
               const isActive = pathname === item.href;
               return (
                 <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton asChild size="sm" isActive={isActive}>
+                  <SidebarMenuButton
+                    asChild
+                    size="sm"
+                    isActive={isActive}
+                    onClick={() => {
+                      if (typeof window !== "undefined") {
+                        window.dispatchEvent(new Event("tweakcn:before-component-change"));
+                      }
+                    }}
+                  >
                     <Link href={item.href}>{item.label}</Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

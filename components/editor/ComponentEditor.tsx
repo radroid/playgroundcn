@@ -15,6 +15,7 @@ import SaveStatusIndicator, { SaveStatus } from "./SaveStatusIndicator";
 import { EditorToolbar } from "./EditorToolbar";
 import { DEFAULT_GLOBAL_CSS, getThemeCss } from "./theme-generator";
 import { getAppCode, UTILS_CODE, TSCONFIG_CODE } from "@/lib/sandpack/sandpack-app-template";
+import { getComponentCache, setComponentCache } from "./cache";
 
 // =============================================================================
 // Types
@@ -323,32 +324,35 @@ function InternalToolbar({
         // Note: lastSavedFiles will be updated when saveStatus becomes 'saved'
     }, [onSave, onCodeChange, sandpack.files]);
 
-    // When the theme changes, save the current files into our in-memory
-    // "browser cache" (lastSavedFiles), then delegate to the parent
+    // Helper to snapshot current Sandpack files into the in-memory cache and
+    // re-apply them. This is used when changing style themes, toggling
+    // light/dark mode, or navigating between components.
+    const snapshotCurrentFilesToCache = useCallback(() => {
+        const savedFiles: Record<string, { code: string }> = {};
+        for (const [path, file] of Object.entries(sandpack.files)) {
+            const fileCode = typeof file === "string" ? file : file.code;
+            savedFiles[path] = { code: fileCode };
+        }
+
+        if (onLastSavedUpdate) {
+            onLastSavedUpdate(savedFiles);
+        }
+
+        // Re-apply saved files to Sandpack to ensure they are in sync
+        for (const [path, file] of Object.entries(savedFiles)) {
+            sandpack.updateFile(path, file.code);
+        }
+    }, [onLastSavedUpdate, sandpack.files, sandpack.updateFile]);
+
+    // When the style theme changes, snapshot the current files into our
+    // in-memory "browser cache" (lastSavedFiles), then delegate to the parent
     // onThemeChange handler.
     const handleThemeChangeWithSave = useCallback(
         (newTheme: string) => {
-            // Snapshot current Sandpack files
-            const savedFiles: Record<string, { code: string }> = {};
-            for (const [path, file] of Object.entries(sandpack.files)) {
-                const fileCode = typeof file === "string" ? file : file.code;
-                savedFiles[path] = { code: fileCode };
-            }
-
-            // Update local last saved state
-            if (onLastSavedUpdate) {
-                onLastSavedUpdate(savedFiles);
-            }
-
-            // Re-apply saved files to Sandpack to ensure they are in sync
-            for (const [path, file] of Object.entries(savedFiles)) {
-                sandpack.updateFile(path, file.code);
-            }
-
-            // Finally, propagate the theme change
+            snapshotCurrentFilesToCache();
             onThemeChange(newTheme);
         },
-        [onLastSavedUpdate, onThemeChange, sandpack.files, sandpack.updateFile]
+        [snapshotCurrentFilesToCache, onThemeChange]
     );
 
     const handleReset = useCallback(() => {
@@ -401,6 +405,23 @@ function InternalToolbar({
 
         return () => clearTimeout(timer);
     }, [sandpack.files, onCodeChange]);
+
+    // Listen for global events that should trigger a cache snapshot, such as
+    // light/dark theme toggles or component switches initiated elsewhere
+    // (e.g., Sidebar navigation).
+    useEffect(() => {
+        const handler = () => {
+            snapshotCurrentFilesToCache();
+        };
+
+        window.addEventListener("tweakcn:before-theme-toggle", handler);
+        window.addEventListener("tweakcn:before-component-change", handler);
+
+        return () => {
+            window.removeEventListener("tweakcn:before-theme-toggle", handler);
+            window.removeEventListener("tweakcn:before-component-change", handler);
+        };
+    }, [snapshotCurrentFilesToCache]);
 
     return (
         <EditorToolbar
@@ -616,8 +637,12 @@ export default function ComponentEditor({
     // Use controlled theme if provided, otherwise use internal state
     const currentTheme = controlledTheme ?? internalTheme;
 
-    // Track last saved files state
-    const [lastSavedFiles, setLastSavedFiles] = useState<Record<string, { code: string }> | undefined>(undefined);
+    // Track last saved files state for this component. We seed it from the
+    // global in-memory cache so edits survive navigation between components
+    // within a single session (but not full page reloads).
+    const [lastSavedFiles, setLastSavedFiles] = useState<Record<string, { code: string }> | undefined>(() =>
+        getComponentCache(componentName)
+    );
 
     const handleThemeChange = useCallback((newTheme: string) => {
         if (controlledOnThemeChange) {
@@ -687,9 +712,13 @@ export default function ComponentEditor({
     }, [sourceDataKey, files]);
 
     // Initialize / re-baseline last saved files when the underlying source data
-    // changes. Theme changes are handled separately so we don't overwrite the
-    // in-memory cache of the user's current edits.
+    // changes, but only if we don't already have a cache for this component.
+    // Theme changes are handled separately so we don't overwrite the in-memory
+    // cache of the user's current edits.
     useEffect(() => {
+        if (lastSavedFiles && Object.keys(lastSavedFiles).length > 0) {
+            return;
+        }
         if (files && Object.keys(files).length > 0) {
             // Create a deep copy of the files for last saved state
             const savedFiles: Record<string, { code: string }> = {};
@@ -697,8 +726,9 @@ export default function ComponentEditor({
                 savedFiles[path] = { code: typeof file === 'string' ? file : file.code };
             }
             setLastSavedFiles(savedFiles);
+            setComponentCache(componentName, savedFiles);
         }
-    }, [code, previewCode, registryDependenciesCode, currentTheme]); // Update when source data or theme changes
+    }, [code, previewCode, registryDependenciesCode, currentTheme, componentName, files, lastSavedFiles]);
 
     // Note: lastSavedFiles is updated in InternalEditor when saveStatus becomes 'saved'
 
@@ -735,7 +765,12 @@ export default function ComponentEditor({
                         onSave={onSave}
                         onCodeChange={onCodeChange}
                         lastSavedFiles={lastSavedFiles}
-                        onLastSavedUpdate={setLastSavedFiles}
+                        onLastSavedUpdate={(files) => {
+                            // Keep the existing in-memory cache of file contents
+                            setLastSavedFiles(files);
+                            // Also store them in the global in-memory cache
+                            setComponentCache(componentName, files);
+                        }}
                         globalCss={effectiveCss}
                     />
                 )}
