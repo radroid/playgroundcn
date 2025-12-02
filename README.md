@@ -1,36 +1,87 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Playgroundcn
 
-## Getting Started
+**A live component playground for shadcn/ui** — Browse, preview, edit, and experiment with shadcn/ui components in real-time.
 
-First, run the development server:
+## 🎬 Demo
 
-```bash
-npm run dev
+![Playgroundcn Demo](public/assets/demo.mov)
+
+## ✨ Features
+
+- 🎨 **Live Preview** — See components render in real-time as you edit
+- 📝 **Interactive Code Editor** — Edit component code with dependency editing.
+- 🌓 **Dark Mode Support** — Seamless theme switching with automatic sync
+- 🌈 **Multiple Theme Support** - We have taken all the themes available on TweakCn and added them into our platform for you to quickly switch between themes.
+- **Cache Support** - it is lightweight application, so remember, before you refresh that you might lose all your changes if you do refresh.
+
+## 🛠️ Tech Stack
+
+- **Framework:** [Next.js 16](https://nextjs.org) (App Router)
+- **Language:** TypeScript
+- **Styling:** Tailwind CSS 4
+- **UI Components:** [shadcn/ui](https://ui.shadcn.com)
+- **Code Editor:** [Sandpack](https://sandpack.codesandbox.io/)
+- **Icons:** [Lucide React](https://lucide.dev)
+- **Theme:** [next-themes](https://github.com/pacocoursey/next-themes)
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- Node.js 18+ and npm/pnpm/yarn/bun
+
+### Installation
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/YOUR_USERNAME/playgroundcn.git
+   cd playgroundcn
+   ```
+
+2. Install dependencies:
+    > Note: if you use npm, yarn or bun remember to delete the pnpm-lock.yaml file before running the install command.
+   ```bash
+   npm install
+   # or
+   pnpm install
+   # or
+   yarn install
+   # or
+   bun install
+   ```
+
+3. Run the development server:
+   ```bash  
+   npm run dev
 # or
 yarn dev
-# or
-pnpm dev
-# or
+   # or
+   pnpm dev
+   # or
 bun dev
-```
+   ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+4. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 🤝 Contributing
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details on how to get started.
 
-## Learn More
+## 📄 License
 
-To learn more about Next.js, take a look at the following resources:
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 🙏 Acknowledgments
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- [shadcn/ui](https://ui.shadcn.com) for the amazing component library
+- [Radix UI](https://www.radix-ui.com/) for accessible primitives
+- [Sandpack](https://sandpack.codesandbox.io/) for the live code editor
+- [TweakCn](https://tweakcn.com) for the amazing theme library
+- [next-themes](https://github.com/pacocoursey/next-themes) for the amazing theme library
+- [Lucide React](https://lucide.dev) for the amazing icon library
+- [Tailwind CSS](https://tailwindcss.com) for the amazing styling library
+- [TypeScript](https://www.typescriptlang.org) for the amazing type safety
 
-## Deploy on Vercel
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+

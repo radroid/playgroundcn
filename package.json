@@ -1,7 +1,16 @@
 {
   "name": "playgroundcn",
   "version": "0.1.0",
-  "private": true,
+  "license": "MIT",
+  "author": "Create + Club",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/radroid/playgroundcn.git"
+  },
+  "bugs": {
+    "url": "https://github.com/radroid/playgroundcn/issues"
+  },
+  "homepage": "https://github.com/radroid/playgroundcn#readme",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
