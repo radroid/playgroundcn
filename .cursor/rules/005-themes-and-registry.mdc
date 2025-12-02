@@ -2,27 +2,56 @@
 description: Specify the theme registry and component registry patterns for PlaygroundCn.
 globs:
   - "lib/registry/**"
+  - "components/editor/theme-generator.ts"
 alwaysApply: true
 ---
 
 ## Theme Registry
 
-- Define themes in `lib/registry/themes.ts` as:
-  - `{ id: string; name: string; css: string }`.
-- The `css` field must be a precompiled global CSS string:
-  - No `@tailwind` directives.
-  - Safe to inject directly as `/globals.css` content in Sandpack.
+- Themes are defined in `lib/registry/themes.ts` as:
+  - `{ id: string; name: string; css: string; cssVars?: { light: Record<string, string>; dark: Record<string, string> } }`.
+- Theme CSS is generated dynamically from `components/editor/registry.json` via `components/editor/theme-generator.ts`.
+- The `getThemeCss(themeName: string)` function:
+  - Reads theme data from `registry.json`
+  - Generates CSS variables for `:root` (light) and `.dark` (dark)
+  - Formats color values properly (handles HSL, hex, function-wrapped values)
+  - Returns a precompiled global CSS string with no `@tailwind` directives.
+- Theme detection: `detectThemeFromCss(css: string)` can identify which preset theme matches a given CSS string.
+- Default theme: `"default"` (fallback if theme not found).
 
 ## Component Registry
 
-- Define components in `lib/registry/components.ts` with entries that include:
-  - `id: string`
-  - `displayName: string`
-  - `category: string`
-  - `description: string`
-  - `sandpackTemplate: string` (usually `"react-ts"`)
-  - `dependencies: Record<string, string>`
-  - `examples: { id: string; name: string; code: string }[]`
+- Components are defined in `lib/registry/components.ts` with entries that include:
+  - `id: string` — Shadcn component id (e.g., "button", "card")
+  - `displayName: string` — human-readable name
+  - `category: string` — grouping (e.g., "ui", "forms")
+  - `description: string` — short description
+  - `sandpackTemplate: SandpackTemplate` — usually `"react-ts"`
+  - `dependencies: Record<string, string>` — NPM dependencies
+  - `registryDependencies?: string[]` — list of Shadcn component ids this depends on
+  - `files?: { path: string; type: string }[]` — files installed by Shadcn registry
+  - `examples: ComponentExample[]` — array of `{ id: string; name: string; code: string }`
 - These registries must be static data used at build time:
   - No dynamic fetching or runtime mutation.
+  - Read at build time via `generateStaticParams` in component pages.
+
+## Component File Reading
+
+- Use `lib/registry/reader.ts` to read component files from the filesystem at build time:
+  - `getComponentFileContent(filePath: string)` — reads a component file relative to `components/` directory
+  - `getRegistryDependenciesCode(dependencies: string[])` — reads multiple registry dependencies
+  - Assumes standard Shadcn structure: `components/ui/<name>.tsx`
+- Component pages read:
+  - Main component code from `entry.files[0].path`
+  - Registry dependencies from `entry.registryDependencies`
+  - Enrich registry dependencies with their own dependencies from the registry
+
+## Theme Context
+
+- `ComponentThemeProvider` (`components/editor/theme-context.tsx`) provides theme state to child components.
+- `ComponentEditor` can use theme from:
+  1. Controlled prop (`currentTheme` / `onThemeChange`)
+  2. Context (`ComponentThemeProvider`)
+  3. Internal state (uncontrolled mode)
+- Theme changes update the generated CSS via `getThemeCss()` and sync to Sandpack's `/styles/globals.css`.
 

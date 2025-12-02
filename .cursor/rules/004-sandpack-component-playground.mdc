@@ -1,32 +1,70 @@
 ---
-description: Define how Sandpack and ComponentPlayground should be structured and used.
+description: Define how Sandpack and ComponentEditor should be structured and used.
 globs:
+  - "components/editor/ComponentEditor.tsx"
   - "components/ComponentPlayground.tsx"
   - "app/component/**/page.tsx"
+  - "lib/sandpack/**"
 alwaysApply: true
 ---
 
-## ComponentPlayground Contract
+## ComponentEditor (Primary Editor Component)
 
-- `ComponentPlayground` must be a **client component** (`"use client"`).
-- It should accept at least:
-  - `exampleCode: string`
-  - `template: string` (default `"react-ts"`)
-  - `dependencies: Record<string, string>`
-  - `globalsCss: string` (CSS string for `/globals.css`)
-  - `title: string`
+- `ComponentEditor` (`components/editor/ComponentEditor.tsx`) is the **main editor component** used in component detail pages.
+- It must be a **client component** (`"use client"`).
+- Key props:
+  - `code: string` — main component source code
+  - `previewCode: string` — example/demo code that uses the component
+  - `globalCss?: string` — optional precompiled CSS
+  - `componentName: string` — used to construct component path
+  - `dependencies?: Record<string, string>` — NPM dependencies
+  - `registryDependenciesCode?: Record<string, { code: string; dependencies?: Record<string, string> }>` — registry component code
+  - `saveStatus?: SaveStatus` — current save status
+  - `componentDisplayName?: string` — display name for toolbar
+  - `componentDescription?: string` — description for toolbar
+  - `currentTheme?: string` — controlled theme (optional)
+  - `onThemeChange?: (theme: string) => void` — theme change callback (required if currentTheme provided)
+- Features:
+  - Theme switching via `ThemeSelector` in toolbar
+  - Auto-save every 30 seconds when there are unsaved changes
+  - Save status tracking and reset functionality
+  - Copy code button
+  - Registry dependency tab markers
+  - Theme context support via `ComponentThemeProvider`
+  - Dark mode support synced with Next.js theme
 
-## Sandpack Files Map
+## ComponentPlayground (Simpler Wrapper)
 
-- Each Sandpack instance should define:
-  - `/App.tsx` — editable example code (`exampleCode`).
-  - `/index.tsx` — imports `"./globals.css"` and renders `<App />`.
-  - `/globals.css` — CSS content of the selected theme (no `@tailwind`).
+- `ComponentPlayground` (`components/ComponentPlayground.tsx`) is a simpler wrapper for basic use cases.
+- Uses `prepareSandpackFiles` from `lib/sandpack/files.ts` to build the files map.
+- Accepts: `exampleCode`, `template`, `dependencies`, `globalsCss`, `title`, `componentPath`, `componentCode`, `registryDependenciesCode`.
+
+## Sandpack Files Map Structure
+
+- Use `prepareSandpackFiles` from `lib/sandpack/files.ts` to build the files map.
+- Standard files structure:
+  - `/Preview.tsx` — the example code (editable)
+  - `/App.tsx` — app wrapper that configures Tailwind and handles dark mode (from `lib/sandpack/sandpack-app-template.ts`)
+  - `/index.tsx` — entry point that imports globals.css and renders App
+  - `/styles/globals.css` — precompiled theme CSS (no `@tailwind` directives)
+  - `/lib/utils.ts` — utility functions (cn helper)
+  - `/tsconfig.json` — TypeScript configuration with path aliases
+  - `/components/ui/<name>.tsx` — registry dependency components (if any)
+  - Main component file at path specified by `componentPath` (e.g., `/components/ui/button.tsx`)
+
+## Sandpack Configuration
+
+- Template: `"react-ts"` (default)
+- External resources: Tailwind CDN and Google Fonts (configured in `ComponentEditor`)
+- Active file: `/Preview.tsx` (or component path for editing)
+- Visible files: Preview, component, globals.css, and registry dependencies
+- Auto-reload and autorun enabled
+- Recompile mode: `"immediate"` with 0 delay
 
 ## Layout Expectations
 
-- Editor and preview should appear:
-  - Side-by-side on desktop.
-  - Stacked vertically on smaller screens.
-- All Sandpack logic must run on the client; do not attempt to SSR Sandpack.
+- Editor and preview appear side-by-side on desktop, stacked on mobile.
+- All Sandpack logic runs client-side; do not attempt to SSR Sandpack.
+- Use `SandpackLayout` from `@codesandbox/sandpack-react` for proper layout.
+- Editor container should have proper flex styling and overflow handling.
 

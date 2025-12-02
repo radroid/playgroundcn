@@ -1,21 +1,42 @@
 ---
-description: Ensure multiple examples are rendered as stacked Sandpack instances with working anchors.
+description: Ensure multiple examples are rendered as stacked ComponentEditor instances with working anchors.
 globs:
   - "app/component/**/page.tsx"
+  - "app/component/**/ComponentExamplesClient.tsx"
 alwaysApply: true
 ---
 
 ## Multiple Examples Pattern
 
-- Each component entry should define `examples: { id; name; code }[]`.
+- Each component entry should define `examples: { id: string; name: string; code: string }[]`.
 - On `/component/[id]` pages:
-  - Render one `ComponentPlayground` per example, stacked vertically.
+  - Use `ComponentExamplesClient` to render examples.
+  - Wrap all examples in `ComponentThemeProvider` to share theme state.
+  - Render one `ComponentEditor` per example, stacked vertically.
   - Do not use tabs to switch between examples.
+
+## Component Page Structure
+
+- Server component (`app/component/[id]/page.tsx`):
+  - Uses `generateStaticParams` to statically generate all component pages.
+  - Reads component code and registry dependencies at build time via `lib/registry/reader.ts`.
+  - Passes data to `ComponentExamplesClient` client component.
+- Client component (`app/component/[id]/ComponentExamplesClient.tsx`):
+  - Wraps examples in `ComponentThemeProvider`.
+  - Renders component header (displayName, description).
+  - Maps over `entry.examples` to render each example.
 
 ## Anchors and Linking
 
-- For each example, add a heading with a stable `id`, e.g.:
-  - `<h2 id={example.id}>{example.name}</h2>`.
+- For each example, add a heading with a stable `id`:
+  - `<h2 id={example.id} className="scroll-m-20 text-lg font-medium tracking-tight">{example.name}</h2>`.
 - Allow URLs like `/component/button#outline` to scroll to the appropriate example.
-- Keep editor state isolated per example, but share the same selected theme across all examples on the page.
+- Use `scroll-m-20` Tailwind class for proper scroll offset.
+
+## Editor State Isolation
+
+- Each `ComponentEditor` instance maintains its own isolated editor state.
+- All examples on the page share the same selected theme via `ComponentThemeProvider`.
+- Theme changes update all Sandpack instances on the page simultaneously.
+- Save status and code changes are tracked per editor instance.
 

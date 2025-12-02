@@ -12,16 +12,43 @@ alwaysApply: true
 - Use **TypeScript** with explicit types for registries and component props.
 - Mark any component that uses hooks or state with `"use client"` at the top.
 - Prefer clear Tailwind class names over overly compressed utility chains.
+- Prefer **Shadcn UI components** (`components/ui/*`) for building UI (buttons, inputs, layout, etc.) over hand-rolled primitives, unless there is a strong reason not to.
+- Use proper file organization:
+  - Editor components in `components/editor/`
+  - Sandpack utilities in `lib/sandpack/`
+  - Registry types and data in `lib/registry/`
+
+## ComponentEditor Architecture
+
+- `ComponentEditor` is the primary editor component with:
+  - Theme switching via toolbar
+  - Auto-save functionality (every 30 seconds)
+  - Save status tracking
+  - Registry dependency support
+  - Copy code button
+  - Reset functionality
+- Use `ComponentThemeProvider` to share theme state across multiple editors on a page.
+- Theme generation uses `getThemeCss()` from `theme-generator.ts` which reads from `registry.json`.
+- Sandpack files are prepared via `prepareSandpackFiles()` from `lib/sandpack/files.ts`.
 
 ## Assistance Preferences
 
 - When refactoring or adding features, align with the existing patterns:
   - Use the registry + Sandpack + theme-injection model already established.
-  - Prefer enhancing the existing layout and registry setup instead of creating new architectures.
+  - Prefer enhancing the existing `ComponentEditor` and registry setup instead of creating new architectures.
+  - Follow the file structure: server components read files at build time, client components handle interactivity.
 - When suggesting changes:
   - Favor focused snippets over full-file rewrites unless necessary.
   - Keep changes compatible with static export and the no-persistence rules.
+  - Maintain the separation between build-time file reading and runtime Sandpack execution.
 - Testing suggestions should prioritize:
   - Running `pnpm lint` and `pnpm build` after structural changes.
   - Verifying that component pages, Sandpack previews, theme switching, and example anchors work as expected.
+  - Ensuring auto-save, reset, and copy code features function correctly.
+
+## Tooling & Package Manager
+
+- Assume **`pnpm` is the default package manager**:
+  - Use `pnpm install`, `pnpm add <pkg>`, and `pnpm <script>` when suggesting commands.
+  - Do not suggest `npm` or `yarn` commands unless the user explicitly asks for them.
 

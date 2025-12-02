@@ -4,7 +4,9 @@ alwaysApply: true
 
 ## Workspace Purpose
 
-PlaygroundCn is a **static Next.js playground** for Shadcn UI components. It is a public, no-login site where users can browse components, edit example code live via Sandpack, and switch between CSS themes. The app must be fully **static-exportable** and run entirely on the client after initial load.
+PlaygroundCn is a **static Next.js playground** for **Shadcn UI** components. It is a public, no-login site where users can browse components, edit example code live via Sandpack, and switch between CSS themes. The app must be fully **static-exportable** and run entirely on the client after initial load.
+
+We **prefer Shadcn UI components everywhere** in the host app (layout, navigation, forms, etc.) instead of hand-rolled primitives, unless there is a strong reason otherwise.
 
 ## Hard Constraints (Always Enforced)
 
@@ -28,42 +30,57 @@ PlaygroundCn is a **static Next.js playground** for Shadcn UI components. It is 
 
 - `app/layout.tsx`: root layout, sidebar + main shell using Tailwind.
 - `app/page.tsx`: home page listing components from a registry.
-- `app/component/[id]/page.tsx`: static component detail pages; must use `generateStaticParams`.
+- `app/component/[id]/page.tsx`: static component detail pages (server component); must use `generateStaticParams`.
+- `app/component/[id]/ComponentExamplesClient.tsx`: client component that renders examples with `ComponentEditor`.
 - `components/Sidebar.tsx`: navigation sidebar that reads from a component registry.
-- `components/ComponentPlayground.tsx`: Sandpack wrapper for live code editing and preview.
-- `components/ThemeSelector.tsx`: theme switcher controlling Sandpack CSS.
+- `components/editor/ComponentEditor.tsx`: primary Sandpack editor component with theme switching, auto-save, etc.
+- `components/editor/theme-context.tsx`: `ComponentThemeProvider` for sharing theme state.
+- `components/editor/theme-generator.ts`: generates CSS from `registry.json` via `getThemeCss()`.
+- `components/editor/EditorToolbar.tsx`: toolbar with theme selector, reset, save status.
+- `components/ComponentPlayground.tsx`: simpler Sandpack wrapper for basic use cases.
 - `components/ui/*`: Shadcn UI primitives.
 - `lib/registry/types.ts`: shared TypeScript types for registry entries.
 - `lib/registry/components.ts`: static registry of components and their examples.
-- `lib/registry/themes.ts`: static registry of themes with precompiled CSS strings.
+- `lib/registry/themes.ts`: static registry of themes with CSS strings.
+- `lib/registry/reader.ts`: reads component files from filesystem at build time.
+- `lib/sandpack/files.ts`: `prepareSandpackFiles()` function to build Sandpack files map.
+- `lib/sandpack/sandpack-app-template.ts`: `getAppCode()`, `UTILS_CODE`, `TSCONFIG_CODE` templates.
 
 If a file deviates from this structure, prefer to realign it instead of introducing new patterns.
 
 ## Sandpack Integration Rules
 
-When implementing or modifying Sandpack integration (usually in `ComponentPlayground` and component pages):
+When implementing or modifying Sandpack integration (usually in `ComponentEditor` and component pages):
 
-- `ComponentPlayground` should be a **client component** and accept at least:
-  - `exampleCode: string`
-  - `template: string` (default `"react-ts"`)
-  - `dependencies: Record<string, string>`
-  - `globalsCss: string` (CSS string from the theme registry)
-  - `title: string`
-- Sandpack files map must include:
-  - `/App.tsx` — editable example code (`exampleCode`).
-  - `/index.tsx` — imports `"./globals.css"` and renders `<App />`.
-  - `/globals.css` — theme CSS string (no `@tailwind` directives).
+- `ComponentEditor` (`components/editor/ComponentEditor.tsx`) is the **primary editor component**:
+  - Must be a **client component** (`"use client"`).
+  - Accepts: `code`, `previewCode`, `globalCss`, `componentName`, `dependencies`, `registryDependenciesCode`, `saveStatus`, `componentDisplayName`, `componentDescription`, `currentTheme`, `onThemeChange`.
+  - Features: theme switching, auto-save, save status, reset, copy code, registry dependency markers.
+  - Uses `ComponentThemeProvider` for shared theme state across multiple editors.
+- `ComponentPlayground` (`components/ComponentPlayground.tsx`) is a simpler wrapper for basic use cases.
+- Sandpack files map (prepared via `prepareSandpackFiles` from `lib/sandpack/files.ts`):
+  - `/Preview.tsx` — editable example code.
+  - `/App.tsx` — app wrapper that configures Tailwind CDN and handles dark mode.
+  - `/index.tsx` — entry point that imports globals.css and renders App.
+  - `/styles/globals.css` — precompiled theme CSS (no `@tailwind` directives).
+  - `/lib/utils.ts` — utility functions (cn helper).
+  - `/tsconfig.json` — TypeScript config with path aliases.
+  - `/components/ui/<name>.tsx` — registry dependency components.
 - Layout behavior:
   - Editor and preview side-by-side on desktop, stacked on small screens.
   - All Sandpack logic must run client-side (no SSR of Sandpack).
+  - Use `SandpackLayout` for proper layout structure.
 
 ## Theme Model
 
-- Themes live in `lib/registry/themes.ts` as:
-  - `{ id: string; name: string; css: string }`.
-- `ThemeSelector` exposes a way to choose a theme by `id`.
-- The selected theme’s `css` string is passed as `globalsCss` into each `ComponentPlayground`.
-- Changing the theme must update the `/globals.css` content in all Sandpack instances on that page.
+- Themes are defined in `lib/registry/themes.ts` with:
+  - `{ id: string; name: string; css: string; cssVars?: { light: Record<string, string>; dark: Record<string, string> } }`.
+- Theme CSS is generated dynamically from `components/editor/registry.json` via `getThemeCss(themeName)` in `components/editor/theme-generator.ts`.
+- `ThemeSelector` (in `EditorToolbar`) exposes a way to choose a theme by `id`.
+- `ComponentThemeProvider` shares theme state across multiple `ComponentEditor` instances on a page.
+- The selected theme's generated CSS is passed as `globalsCss` and synced to Sandpack's `/styles/globals.css` via `ThemeSyncer`.
+- Changing the theme updates the CSS in all Sandpack instances on that page simultaneously.
+- Theme detection: `detectThemeFromCss()` can identify which preset theme matches a given CSS string.
 
 ## Component Registry & Multiple Examples
 
@@ -71,11 +88,14 @@ When implementing or modifying Sandpack integration (usually in `ComponentPlaygr
   - `id`, `displayName`, `category`, `description`.
   - `sandpackTemplate` (usually `"react-ts"`).
   - `dependencies: Record<string, string>`.
+  - `registryDependencies?: string[]` — list of Shadcn component ids this depends on.
+  - `files?: { path: string; type: string }[]` — files installed by Shadcn registry.
   - `examples: { id: string; name: string; code: string }[]`.
-- Component detail pages should:
-  - Render **stacked** `ComponentPlayground` instances: one per example.
-  - Give each example a heading with `id={example.id}` so URLs like `/component/button#outline` scroll correctly.
-  - Keep editor state isolated per example but share the same selected theme.
+- Component detail pages:
+  - Server component (`app/component/[id]/page.tsx`) reads component code and registry dependencies at build time via `lib/registry/reader.ts`.
+  - Client component (`app/component/[id]/ComponentExamplesClient.tsx`) wraps examples in `ComponentThemeProvider` and renders **stacked** `ComponentEditor` instances: one per example.
+  - Give each example a heading with `id={example.id}` and `scroll-m-20` class so URLs like `/component/button#outline` scroll correctly.
+  - Keep editor state isolated per example but share the same selected theme via `ComponentThemeProvider`.
 
 ## Host App Tailwind Usage
 
@@ -106,10 +126,17 @@ When making non-trivial changes, Cursor should:
 
 - Use **TypeScript with strict types** and explicit prop/registry types.
 - Mark any component using hooks/state with `"use client"` at the top.
+- Prefer **Shadcn UI components** (`components/ui/*`) for UI (buttons, inputs, layout primitives) over raw HTML elements, unless a Shadcn primitive is clearly unsuitable.
 - When proposing new code, show focused snippets instead of full files when possible.
 - When refactoring, prefer aligning with the existing registry and Sandpack patterns rather than inventing new abstractions.
 - Do not introduce:
   - Backend logic or persistence.
   - Authentication.
   - Tabbed example UIs (keep examples stacked instead).
+
+## Package Manager
+
+- Assume **`pnpm` is the package manager**:
+  - Use commands like `pnpm install`, `pnpm add <pkg>`, and `pnpm <script>` when suggesting or running scripts.
+  - Avoid `npm` or `yarn` in instructions unless explicitly requested otherwise.
 
