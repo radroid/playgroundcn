@@ -15,69 +15,117 @@ export default function Home() {
           </p>
         </header>
 
-        <section className="grid gap-6 text-sm sm:grid-cols-2">
-          <article className="space-y-2">
-            <div className="h-24 rounded-lg border border-dashed border-zinc-200 bg-zinc-100/60 dark:border-zinc-800 dark:bg-zinc-900/60" />
+        <section className="flex flex-col gap-10 text-sm">
+          <article className="space-y-2 border-t border-zinc-200 pt-6 first:border-t-0 first:pt-0 dark:border-zinc-800">
             <h2 className="text-base font-medium">Browse Shadcn components</h2>
             <p className="text-zinc-600 dark:text-zinc-400">
               Explore the full Shadcn component library from the sidebar.
             </p>
+            <video
+              src="/assets/Playgroundcn - Sidebar.mov"
+              aria-label="Browse Shadcn components from the sidebar"
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="w-full max-h-[420px] rounded-lg border border-zinc-200 bg-zinc-100/60 object-cover dark:border-zinc-800 dark:bg-zinc-900/60"
+            />
           </article>
 
-          <article className="space-y-2">
-            <div className="h-24 rounded-lg border border-dashed border-zinc-200 bg-zinc-100/60 dark:border-zinc-800 dark:bg-zinc-900/60" />
-            <h2 className="text-base font-medium">Edit component source</h2>
+          <article className="space-y-2 border-t border-zinc-200 pt-6 first:border-t-0 first:pt-0 dark:border-zinc-800">
+            <h2 className="text-base font-medium">Edit code &amp; preview instantly</h2>
             <p className="text-zinc-600 dark:text-zinc-400">
-              Open any component’s code files and customize them in-place.
+              Edit component files and watch the preview update as you type.
             </p>
+            <video
+              src="/assets/Playgroundcn - editor and live preview.mov"
+              aria-label="Edit component code and see a live preview"
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="w-full rounded-lg border border-zinc-200 bg-zinc-100/60 object-cover dark:border-zinc-800 dark:bg-zinc-900/60"
+            />
           </article>
 
-          <article className="space-y-2">
-            <div className="h-24 rounded-lg border border-dashed border-zinc-200 bg-zinc-100/60 dark:border-zinc-800 dark:bg-zinc-900/60" />
-            <h2 className="text-base font-medium">Preview changes instantly</h2>
-            <p className="text-zinc-600 dark:text-zinc-400">
-              See a live preview update as you type, no extra setup needed.
-            </p>
-          </article>
-
-          <article className="space-y-2">
-            <div className="h-24 rounded-lg border border-dashed border-zinc-200 bg-zinc-100/60 dark:border-zinc-800 dark:bg-zinc-900/60" />
+          <article className="space-y-2 border-t border-zinc-200 pt-6 first:border-t-0 first:pt-0 dark:border-zinc-800">
             <h2 className="text-base font-medium">Apply curated styles</h2>
             <p className="text-zinc-600 dark:text-zinc-400">
               Swap between prebuilt styles from Tweakcn using the styles dropdown.
             </p>
+            <video
+              src="/assets/Playgroundcn - Styles.mov"
+              aria-label="Switch between different styles from Tweakcn"
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="w-full rounded-lg border border-zinc-200 bg-zinc-100/60 object-cover dark:border-zinc-800 dark:bg-zinc-900/60"
+            />
           </article>
 
-          <article className="space-y-2">
-            <div className="h-24 rounded-lg border border-dashed border-zinc-200 bg-zinc-100/60 dark:border-zinc-800 dark:bg-zinc-900/60" />
+          <article className="space-y-2 border-t border-zinc-200 pt-6 first:border-t-0 first:pt-0 dark:border-zinc-800">
             <h2 className="text-base font-medium">Toggle light &amp; dark modes</h2>
             <p className="text-zinc-600 dark:text-zinc-400">
               Preview every style in both light and dark themes with a click.
             </p>
+            <video
+              src="/assets/Playgroundcn - Toggle light:dark.mov"
+              aria-label="Toggle between light and dark themes"
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="w-full rounded-lg border border-zinc-200 bg-zinc-100/60 object-cover dark:border-zinc-800 dark:bg-zinc-900/60"
+            />
           </article>
 
-          <article className="space-y-2">
-            <div className="h-24 rounded-lg border border-dashed border-zinc-200 bg-zinc-100/60 dark:border-zinc-800 dark:bg-zinc-900/60" />
+          <article className="space-y-2 border-t border-zinc-200 pt-6 first:border-t-0 first:pt-0 dark:border-zinc-800">
             <h2 className="text-base font-medium">Copy production‑ready code</h2>
             <p className="text-zinc-600 dark:text-zinc-400">
               Copy component code and paste it directly into your repo.
             </p>
+            <video
+              src="/assets/Playground - Copy code (light).mov"
+              aria-label="Copy component code to your own project"
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="w-full rounded-lg border border-zinc-200 bg-zinc-100/60 object-cover dark:border-zinc-800 dark:bg-zinc-900/60"
+            />
           </article>
 
-          <article className="space-y-2">
-            <div className="h-24 rounded-lg border border-dashed border-zinc-200 bg-zinc-100/60 dark:border-zinc-800 dark:bg-zinc-900/60" />
+          <article className="space-y-2 border-t border-zinc-200 pt-6 first:border-t-0 first:pt-0 dark:border-zinc-800">
             <h2 className="text-base font-medium">Keep edits while you explore</h2>
             <p className="text-zinc-600 dark:text-zinc-400">
               Switch between components without losing changes until you refresh.
             </p>
+            <video
+              src="/assets/Playgroundcn - keep cache.mov"
+              aria-label="Keep edits while switching between components"
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="w-full rounded-lg border border-zinc-200 bg-zinc-100/60 object-cover dark:border-zinc-800 dark:bg-zinc-900/60"
+            />
           </article>
 
-          <article className="space-y-2">
-            <div className="h-24 rounded-lg border border-dashed border-zinc-200 bg-zinc-100/60 dark:border-zinc-800 dark:bg-zinc-900/60" />
+          <article className="space-y-2 border-t border-zinc-200 pt-6 first:border-t-0 first:pt-0 dark:border-zinc-800">
             <h2 className="text-base font-medium">Jump anywhere with Command+K</h2>
             <p className="text-zinc-600 dark:text-zinc-400">
               Use Command+K to search for and open any component in seconds.
             </p>
+            <video
+              src="/assets/Playgroundcn - Searching.mov"
+              aria-label="Search for components with Command+K"
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="w-full rounded-lg border border-zinc-200 bg-zinc-100/60 object-cover dark:border-zinc-800 dark:bg-zinc-900/60"
+            />
           </article>
         </section>
       </main>
