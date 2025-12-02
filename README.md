@@ -4,7 +4,7 @@
 
 ## 🎬 Demo
 
-![Playgroundcn Demo](public/assets/demo.mov)
+![Playgroundcn Demo](public/assets/demo.mp4)
 
 ## ✨ Features
 
