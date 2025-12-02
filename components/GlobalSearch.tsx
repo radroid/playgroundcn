@@ -69,9 +69,14 @@ export function GlobalSearch() {
         onClick={() => setOpen(true)}
       >
         <span className="truncate">Search components...</span>
-        <kbd className="ml-2 hidden rounded border bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground sm:inline-flex">
-          ⌘K
-        </kbd>
+        <span className="ml-3 hidden items-center gap-1 sm:inline-flex">
+          <kbd className="rounded border bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+            ⌘
+          </kbd>
+          <kbd className="rounded border bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+            K
+          </kbd>
+        </span>
       </Button>
 
       <CommandDialog open={open} onOpenChange={setOpen}>
