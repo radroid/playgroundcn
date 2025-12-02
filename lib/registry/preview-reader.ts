@@ -183,20 +183,4 @@ export async function getPreviewExamples(
   return examples;
 }
 
-/**
- * Gets preview examples for multiple components at once.
- */
-export async function getPreviewExamplesForComponents(
-  componentIds: string[]
-): Promise<Record<string, ComponentExample[]>> {
-  const result: Record<string, ComponentExample[]> = {};
-  
-  await Promise.all(
-    componentIds.map(async (componentId) => {
-      result[componentId] = await getPreviewExamples(componentId);
-    })
-  );
-  
-  return result;
-}
 

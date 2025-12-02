@@ -37,7 +37,6 @@ We **prefer Shadcn UI components everywhere** in the host app (layout, navigatio
 - `components/editor/theme-context.tsx`: `ComponentThemeProvider` for sharing theme state.
 - `components/editor/theme-generator.ts`: generates CSS from `registry.json` via `getThemeCss()`.
 - `components/editor/EditorToolbar.tsx`: toolbar with theme selector, reset, save status.
-- `components/ComponentPlayground.tsx`: simpler Sandpack wrapper for basic use cases.
 - `components/ui/*`: Shadcn UI primitives.
 - `lib/registry/types.ts`: shared TypeScript types for registry entries.
 - `lib/registry/components.ts`: static registry of components and their examples.
@@ -57,7 +56,6 @@ When implementing or modifying Sandpack integration (usually in `ComponentEditor
   - Accepts: `code`, `previewCode`, `globalCss`, `componentName`, `dependencies`, `registryDependenciesCode`, `saveStatus`, `componentDisplayName`, `componentDescription`, `currentTheme`, `onThemeChange`.
   - Features: theme switching, auto-save, save status, reset, copy code, registry dependency markers.
   - Uses `ComponentThemeProvider` for shared theme state across multiple editors.
-- `ComponentPlayground` (`components/ComponentPlayground.tsx`) is a simpler wrapper for basic use cases.
 - Sandpack files map (prepared via `prepareSandpackFiles` from `lib/sandpack/files.ts`):
   - `/Preview.tsx` — editable example code.
   - `/App.tsx` — app wrapper that configures Tailwind CDN and handles dark mode.

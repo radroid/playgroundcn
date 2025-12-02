@@ -11,7 +11,7 @@ import {
 import { useTheme } from "next-themes";
 import { Copy, Check } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import SaveStatusIndicator, { SaveStatus } from "./SaveStatusIndicator";
+import { SaveStatus } from "./SaveStatusIndicator";
 import { EditorToolbar } from "./EditorToolbar";
 import { DEFAULT_GLOBAL_CSS, getThemeCss } from "./theme-generator";
 import { getAppCode, UTILS_CODE, TSCONFIG_CODE, USE_MOBILE_CODE } from "@/lib/sandpack/sandpack-app-template";

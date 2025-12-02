@@ -3,8 +3,6 @@
  * This helps build the component registry with correct dependencies.
  */
 
-import type { ComponentEntry } from "./types";
-
 export const BASE_DEPENDENCIES = {
   react: "19.2.0",
   "react-dom": "19.2.0",
@@ -238,32 +236,4 @@ export const COMPONENT_REGISTRY_DEPS: Record<string, string[]> = {
   "toggle-group": ["toggle"], // imports toggleVariants
   tooltip: ["button"], // preview uses: button
 };
-
-/**
- * Helper to create component entry with merged dependencies
- */
-export function createComponentEntry(
-  id: string,
-  displayName: string,
-  category: string = "ui",
-  description?: string
-): Partial<ComponentEntry> {
-  const specificDeps = COMPONENT_SPECIFIC_DEPS[id] || {};
-  const registryDeps = COMPONENT_REGISTRY_DEPS[id] || [];
-
-  return {
-    id,
-    displayName,
-    category,
-    description: description || `Shadcn ui: ${displayName}`,
-    sandpackTemplate: "react-ts" as const,
-    dependencies: {
-      ...BASE_DEPENDENCIES,
-      ...specificDeps,
-    },
-    registryDependencies: registryDeps.length > 0 ? registryDeps : undefined,
-    files: [{ path: `ui/${id}.tsx`, type: "registry:ui" }],
-    examples: [], // Preview files will provide examples
-  };
-}
 
