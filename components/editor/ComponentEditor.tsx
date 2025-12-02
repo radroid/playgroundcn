@@ -115,6 +115,76 @@ function CopyCodeButton() {
 }
 
 // =============================================================================
+// File State Saver Component (saves user edits before Sandpack unmounts)
+// =============================================================================
+
+function FileStateSaver({
+    savedFilesRef,
+}: {
+    savedFilesRef: React.MutableRefObject<Record<string, string> | null>;
+}) {
+    const { sandpack } = useSandpack();
+
+    // Save user edits on every change so we have the latest state before unmount
+    useEffect(() => {
+        const files: Record<string, string> = {};
+        for (const [path, file] of Object.entries(sandpack.files)) {
+            files[path] = typeof file === 'string' ? file : file.code;
+        }
+        savedFilesRef.current = files;
+    }, [sandpack.files, savedFilesRef]);
+
+    return null;
+}
+
+// =============================================================================
+// File State Restorer Component (restores user edits after Sandpack remounts)
+// =============================================================================
+
+function FileStateRestorer({
+    savedFilesRef,
+    effectiveCss,
+}: {
+    savedFilesRef: React.MutableRefObject<Record<string, string> | null>;
+    effectiveCss: string;
+}) {
+    const { sandpack } = useSandpack();
+    const hasRestoredRef = useRef(false);
+
+    // Restore user edits after remount (runs once per mount)
+    useEffect(() => {
+        if (savedFilesRef.current && !hasRestoredRef.current) {
+            const savedFiles = savedFilesRef.current;
+            
+            // Restore user-edited files (Preview.tsx and component files)
+            // But NOT App.tsx or globals.css - those should use new theme values
+            for (const [path, code] of Object.entries(savedFiles)) {
+                // Skip theme-related files - they should use new values
+                if (path === "/App.tsx" || path === "/styles/globals.css") {
+                    continue;
+                }
+                // Restore user edits for code files
+                sandpack.updateFile(path, code);
+            }
+            
+            hasRestoredRef.current = true;
+            savedFilesRef.current = null;
+        }
+    }, [sandpack, savedFilesRef]);
+
+    // Update globals.css when CSS changes (for style theme changes, not dark mode)
+    const prevCssRef = useRef(effectiveCss);
+    useEffect(() => {
+        if (prevCssRef.current !== effectiveCss) {
+            sandpack.updateFile("/styles/globals.css", effectiveCss);
+            prevCssRef.current = effectiveCss;
+        }
+    }, [effectiveCss, sandpack]);
+
+    return null;
+}
+
+// =============================================================================
 // Registry Tab Marker Component (marks registry dependency tabs)
 // =============================================================================
 
@@ -510,8 +580,30 @@ export default function ComponentEditor({
     currentTheme: controlledTheme,
     onThemeChange: controlledOnThemeChange,
 }: ComponentEditorProps) {
-    const { theme, resolvedTheme } = useTheme();
+    const { resolvedTheme } = useTheme();
     const componentPath = `/components/ui/${componentName}.tsx`;
+    
+    // Track dark mode from DOM since ThemeToggle uses direct DOM manipulation
+    // This ensures we stay in sync with the actual dark mode state
+    const [isDarkFromDom, setIsDarkFromDom] = useState(false);
+    
+    useEffect(() => {
+        // Initial check
+        setIsDarkFromDom(document.documentElement.classList.contains('dark'));
+        
+        // Watch for class changes on the html element
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.attributeName === 'class') {
+                    setIsDarkFromDom(document.documentElement.classList.contains('dark'));
+                }
+            });
+        });
+        
+        observer.observe(document.documentElement, { attributes: true });
+        
+        return () => observer.disconnect();
+    }, []);
 
     // Theme state - controlled or uncontrolled
     const [internalTheme, setInternalTheme] = useState("default");
@@ -545,11 +637,12 @@ export default function ComponentEditor({
     }, [controlledTheme]);
 
     // Computed values
-    // Handle theme loading state - default to light if theme is not yet resolved
+    // Use DOM-based dark mode detection since ThemeToggle uses direct DOM manipulation
+    // Fall back to resolvedTheme for next-themes compatibility
     const isDark = useMemo(() => {
-        if (!resolvedTheme) return false; // Default to light during loading
-        return resolvedTheme === "dark";
-    }, [resolvedTheme]);
+        // Prefer DOM-based detection as it's more reliable with current ThemeToggle implementation
+        return isDarkFromDom || (resolvedTheme === "dark");
+    }, [isDarkFromDom, resolvedTheme]);
     const effectiveCss = useEffectiveCss(globalCss, isThemeManuallySelected, generatedCss);
 
     // Sandpack configuration - files should only update when source data changes
@@ -596,24 +689,34 @@ export default function ComponentEditor({
 
     // Note: lastSavedFiles is updated in InternalEditor when saveStatus becomes 'saved'
 
-    // Key for SandpackProvider - keep it stable to preserve internal state
-    // Only remount when theme changes or registry dependencies change (to ensure new files are loaded)
+    // Ref to store user edits before theme change causes remount
+    // FileStateSaver continuously updates this, FileStateRestorer uses it after remount
+    const savedUserFilesRef = useRef<Record<string, string> | null>(null);
+
+    // Key for SandpackProvider - include isDark so Sandpack remounts with correct editor theme
+    // User edits are preserved via savedUserFilesRef and FileStateRestorer
     const registryHash = registryDependenciesCode
         ? Object.keys(registryDependenciesCode).join(',')
         : '';
-    const providerKey = `sandpack-${currentTheme}-${isDark ? "dark" : "light"}-${registryHash}`;
+    const providerKey = `sandpack-${sourceDataKey}-${isDark ? "dark" : "light"}-${registryHash}`;
 
     return (
         <div className={readOnly ? "h-full w-full flex flex-col" : "h-full w-full flex flex-col"}>
             <SandpackProvider
                 key={providerKey}
                 template="react-ts"
-                theme={resolvedTheme === "dark" ? "dark" : "light"}
+                theme={isDark ? "dark" : "light"}
                 files={files}
                 options={options}
                 customSetup={customSetup}
                 style={{ height: "100%", display: "flex", flexDirection: "column" }}
             >
+                {/* File State Management - saves edits before unmount, restores after remount */}
+                <FileStateSaver savedFilesRef={savedUserFilesRef} />
+                <FileStateRestorer 
+                    savedFilesRef={savedUserFilesRef} 
+                    effectiveCss={effectiveCss}
+                />
 
                 {/* Toolbar - outside SandpackLayout but inside SandpackProvider */}
                 {!readOnly && (
