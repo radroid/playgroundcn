@@ -4,7 +4,7 @@
 
 ## 🎬 Demo
 
-![Playgroundcn Demo](https://github.com/radroid/playgroundcn/blob/main/public/assets/demo.mp4)
+[Playgroundcn Demo](https://github.com/user-attachments/assets/104f800e-4ecf-4a9c-9a18-cf2b3a56d823)
 
 ## ✨ Features
 
