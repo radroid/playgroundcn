@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, useState, useCallback } from "react";
 import { Combobox, ComboboxOption } from "@/components/ui/combobox";
 import { Label } from "@/components/ui/label";
 import registry from "../registry.json";
@@ -10,6 +10,8 @@ interface ThemeSelectorProps {
     currentTheme: string;
     onThemeChange: (theme: string) => void;
     globalCss?: string;
+    /** Whether there are unsaved changes in the editor */
+    hasUnsavedChanges?: boolean;
 }
 
 // Helper function to normalize color values for comparison
@@ -175,6 +177,7 @@ export function ThemeSelector({
     currentTheme,
     onThemeChange,
     globalCss,
+    hasUnsavedChanges,
 }: ThemeSelectorProps) {
     // Detect the current theme from globalCss if provided
     const detectedTheme = useMemo(() => {
@@ -193,10 +196,31 @@ export function ThemeSelector({
         return currentTheme;
     }, [globalCss, detectedTheme, currentTheme]);
 
-    const handleThemeSelect = (value: string) => {
-        if (value === effectiveTheme) return;
-        onThemeChange(value);
-    };
+    const [pendingTheme, setPendingTheme] = useState<string | null>(null);
+
+    const handleThemeSelect = useCallback(
+        (value: string) => {
+            if (value === effectiveTheme) return;
+
+            // If there are unsaved changes, delegate confirmation to the toolbar
+            // via a custom event so we don't couple this component to alert-dialog UI.
+            if (hasUnsavedChanges) {
+                const event = new CustomEvent("tweakcn:confirm-theme-change", {
+                    detail: {
+                        nextTheme: value,
+                        apply: () => {
+                            onThemeChange(value);
+                        },
+                    },
+                });
+                window.dispatchEvent(event);
+                return;
+            }
+
+            onThemeChange(value);
+        },
+        [effectiveTheme, hasUnsavedChanges, onThemeChange]
+    );
 
     // Helper to get theme font
     const getThemeFont = (themeName: string): string | undefined => {

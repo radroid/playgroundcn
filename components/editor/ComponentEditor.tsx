@@ -296,20 +296,16 @@ function InternalToolbar({
             return typeof file === 'string' ? file : file.code;
         };
 
-        // Check if any file has changed
-        for (const [path, file] of Object.entries(currentFiles)) {
-            const savedFile = savedFiles[path];
-            const currentCode = getFileCode(file);
-            const savedCode = savedFile ? getFileCode(savedFile) : '';
+        // Only compare files we actually track in lastSavedFiles.
+        // Ignore any additional internal files Sandpack may create.
+        for (const [path, savedFile] of Object.entries(savedFiles)) {
+            const currentFile = currentFiles[path];
+            if (!currentFile) continue;
+
+            const currentCode = getFileCode(currentFile);
+            const savedCode = getFileCode(savedFile);
 
             if (currentCode !== savedCode) {
-                return true;
-            }
-        }
-
-        // Check if any saved file was deleted
-        for (const path of Object.keys(savedFiles)) {
-            if (!currentFiles[path]) {
                 return true;
             }
         }
@@ -598,20 +594,20 @@ export default function ComponentEditor({
     }, [isDarkFromDom, resolvedTheme]);
     const effectiveCss = useEffectiveCss(globalCss, isThemeManuallySelected, generatedCss);
 
-    // Sandpack configuration - files should only update when source data changes
-    // Sandpack will handle live updates internally when user edits in the editor
+    // Sandpack configuration - files should only update when source data changes.
+    // Sandpack will handle live updates internally when user edits in the editor.
     const files = useSandpackFiles(componentPath, code, previewCode, effectiveCss, isDark, registryDependenciesCode);
     const options = useSandpackOptions(componentPath, registryDependenciesCode);
     const customSetup = useSandpackSetup(dependencies, registryDependenciesCode);
 
-    // Use a ref to stabilize files - refs don't trigger re-renders, keeping Sandpack's internal state intact
-    // This is critical: when files prop changes, Sandpack resets its internal state, breaking live editing
+    // Use a ref to stabilize files - refs don't trigger re-renders, keeping Sandpack's internal state intact.
+    // This is critical: when the files prop changes, Sandpack can reset its internal state and overwrite user edits.
     const stableFilesRef = useRef(files);
     const lastSourceDataRef = useRef<string>("");
 
-    // Create a hash of source data to detect meaningful changes
-    // Note: We exclude isDark and effectiveCss from the key that forces file reset
-    // because we handle those via ThemeSyncer
+    // Create a hash of source data to detect meaningful changes to the "source of truth"
+    // for files (initial code/preview/registry). Theme and style changes are handled
+    // via CssUpdater and the Sandpack theme prop so they don't wipe user edits.
     const sourceDataKey = useMemo(() => {
         const registryHash = registryDependenciesCode
             ? Object.keys(registryDependenciesCode).join(',')
@@ -628,7 +624,9 @@ export default function ComponentEditor({
         }
     }, [sourceDataKey, files]);
 
-    // Initialize last saved files when component data changes
+    // Initialize / re-baseline last saved files when source data or theme changes.
+    // This ensures that after a theme/style change (which resets code), we treat
+    // the new code as the "no changes" baseline so hasChanges becomes false again.
     useEffect(() => {
         if (files && Object.keys(files).length > 0) {
             // Create a deep copy of the files for last saved state
@@ -638,7 +636,7 @@ export default function ComponentEditor({
             }
             setLastSavedFiles(savedFiles);
         }
-    }, [code, previewCode, registryDependenciesCode]); // Update when source data changes
+    }, [code, previewCode, registryDependenciesCode, currentTheme]); // Update when source data or theme changes
 
     // Note: lastSavedFiles is updated in InternalEditor when saveStatus becomes 'saved'
 
