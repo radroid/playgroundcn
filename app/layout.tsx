@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Sidebar } from "../components/Sidebar";
 import { ThemeToggle } from "../components/ThemeToggle";
+import { GlobalSearch } from "../components/GlobalSearch";
 import {
   SidebarInset,
   SidebarProvider,
@@ -41,8 +42,13 @@ export default function RootLayout({
           </div>
           <SidebarInset>
             <div className="mx-auto flex w-full max-w-6xl flex-col px-4 py-4">
-              <div className="mb-4 flex items-center gap-2">
-                <SidebarTrigger />
+              <div className="mb-4 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <SidebarTrigger />
+                </div>
+                <div className="w-full max-w-xs">
+                  <GlobalSearch />
+                </div>
               </div>
               {children}
             </div>
