@@ -102,6 +102,19 @@ body {
 `;
 }
 
+// Helper to filter out undefined values and ensure Record<string, string>
+function cleanCssVars(vars: any): Record<string, string> {
+  const cleaned: Record<string, string> = {};
+  if (vars && typeof vars === 'object') {
+    for (const [key, value] of Object.entries(vars)) {
+      if (typeof value === 'string') {
+        cleaned[key] = value;
+      }
+    }
+  }
+  return cleaned;
+}
+
 // Get initial variables from a theme
 function getThemeVariables(themeName: string): CssVariables {
   const theme = registry.items.find((item) => item.name === themeName);
@@ -110,9 +123,9 @@ function getThemeVariables(themeName: string): CssVariables {
   }
 
   return {
-    light: { ...(theme.cssVars.light || {}) } as Record<string, string>,
-    dark: { ...(theme.cssVars.dark || {}) } as Record<string, string>,
-    shared: theme.cssVars.theme ? { ...theme.cssVars.theme } as Record<string, string> : undefined,
+    light: cleanCssVars(theme.cssVars.light),
+    dark: cleanCssVars(theme.cssVars.dark),
+    shared: theme.cssVars.theme ? cleanCssVars(theme.cssVars.theme) : undefined,
   };
 }
 
