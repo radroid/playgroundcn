@@ -209,6 +209,7 @@ export const COMPONENT_REGISTRY_DEPS: Record<string, string[]> = {
   calendar: ["button"], // imports Button, buttonVariants
   card: ["button", "input", "label"], // preview uses: button, input, label
   carousel: ["button", "card"], // imports Button; preview uses: card
+  chart: ["button", "card"], // imports Button; preview uses: card
   checkbox: ["label"], // preview uses: label
   collapsible: ["button"], // preview uses: button
   combobox: ["button", "command", "popover", "dialog"], // imports all four
