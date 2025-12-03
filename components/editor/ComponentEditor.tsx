@@ -13,9 +13,9 @@ import { Copy, Check } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { SaveStatus } from "./SaveStatusIndicator";
 import { EditorToolbar } from "./EditorToolbar";
-import { DEFAULT_GLOBAL_CSS, getThemeCss } from "./theme-generator";
 import { getAppCode, UTILS_CODE, TSCONFIG_CODE, USE_MOBILE_CODE } from "@/lib/sandpack/sandpack-app-template";
 import { getComponentCache, setComponentCache } from "./cache";
+import { useGlobalCss } from "@/lib/context/global-css-context";
 
 // =============================================================================
 // Types
@@ -26,8 +26,6 @@ export interface ComponentEditorProps {
     code: string;
     /** The preview/demo code that uses the component */
     previewCode: string;
-    /** Optional global CSS styles */
-    globalCss?: string;
     /** Whether the editor is read-only */
     readOnly?: boolean;
     /** Callback when user saves */
@@ -46,10 +44,6 @@ export interface ComponentEditorProps {
     componentDisplayName?: string;
     /** Description shown in toolbar */
     componentDescription?: string;
-    /** Controlled theme value (if provided, theme is controlled externally) */
-    currentTheme?: string;
-    /** Callback when theme changes (required if currentTheme is provided) */
-    onThemeChange?: (theme: string) => void;
 }
 
 // =============================================================================
@@ -230,8 +224,6 @@ function RegistryTabMarker({
 interface InternalToolbarProps {
     readOnly?: boolean;
     saveStatus: SaveStatus;
-    currentTheme: string;
-    onThemeChange: (theme: string) => void;
     onSave?: (files: Record<string, { code: string }>) => void;
     onCodeChange?: (files: Record<string, { code: string }>) => void;
     componentDisplayName?: string;
@@ -244,8 +236,6 @@ interface InternalToolbarProps {
 function InternalToolbar({
     readOnly,
     saveStatus,
-    currentTheme,
-    onThemeChange,
     onSave,
     onCodeChange,
     componentDisplayName,
@@ -344,17 +334,6 @@ function InternalToolbar({
         }
     }, [onLastSavedUpdate, sandpack.files, sandpack.updateFile]);
 
-    // When the style theme changes, snapshot the current files into our
-    // in-memory "browser cache" (lastSavedFiles), then delegate to the parent
-    // onThemeChange handler.
-    const handleThemeChangeWithSave = useCallback(
-        (newTheme: string) => {
-            snapshotCurrentFilesToCache();
-            onThemeChange(newTheme);
-        },
-        [snapshotCurrentFilesToCache, onThemeChange]
-    );
-
     const handleReset = useCallback(() => {
         if (!lastSavedFiles) {
             // Fallback to resetting to initial if no saved state
@@ -427,8 +406,6 @@ function InternalToolbar({
         <EditorToolbar
             componentDisplayName={componentDisplayName}
             componentDescription={componentDescription}
-            currentTheme={currentTheme}
-            onThemeChange={handleThemeChangeWithSave}
             saveStatus={saveStatus}
             readOnly={readOnly}
             onReset={handleReset}
@@ -442,22 +419,6 @@ function InternalToolbar({
 // =============================================================================
 // Hooks
 // =============================================================================
-
-function useEffectiveCss(
-    globalCss: string | undefined,
-    isThemeManuallySelected: boolean,
-    generatedCss: string
-) {
-    return useMemo(() => {
-        if (isThemeManuallySelected) {
-            return generatedCss;
-        }
-        if (globalCss && globalCss.trim().length > 0) {
-            return globalCss;
-        }
-        return generatedCss;
-    }, [globalCss, isThemeManuallySelected, generatedCss]);
-}
 
 function useSandpackFiles(
     componentPath: string,
@@ -595,7 +556,6 @@ function useSandpackSetup(
 export default function ComponentEditor({
     code,
     previewCode,
-    globalCss,
     readOnly,
     onSave,
     onCodeChange,
@@ -605,10 +565,9 @@ export default function ComponentEditor({
     saveStatus = "idle",
     componentDisplayName,
     componentDescription,
-    currentTheme: controlledTheme,
-    onThemeChange: controlledOnThemeChange,
 }: ComponentEditorProps) {
     const { resolvedTheme } = useTheme();
+    const { globalCss, currentTheme } = useGlobalCss();
     const componentPath = `/components/ui/${componentName}.tsx`;
     
     // Track dark mode from DOM since ThemeToggle uses direct DOM manipulation
@@ -633,40 +592,12 @@ export default function ComponentEditor({
         return () => observer.disconnect();
     }, []);
 
-    // Theme state - controlled or uncontrolled
-    const [internalTheme, setInternalTheme] = useState("default");
-    const [generatedCss, setGeneratedCss] = useState(DEFAULT_GLOBAL_CSS);
-    const [isThemeManuallySelected, setIsThemeManuallySelected] = useState(false);
-
-    // Use controlled theme if provided, otherwise use internal state
-    const currentTheme = controlledTheme ?? internalTheme;
-
     // Track last saved files state for this component. We seed it from the
     // global in-memory cache so edits survive navigation between components
     // within a single session (but not full page reloads).
     const [lastSavedFiles, setLastSavedFiles] = useState<Record<string, { code: string }> | undefined>(() =>
         getComponentCache(componentName)
     );
-
-    const handleThemeChange = useCallback((newTheme: string) => {
-        if (controlledOnThemeChange) {
-            // Controlled mode: notify parent
-            controlledOnThemeChange(newTheme);
-        } else {
-            // Uncontrolled mode: update internal state
-            setInternalTheme(newTheme);
-        }
-        setGeneratedCss(getThemeCss(newTheme));
-        setIsThemeManuallySelected(true);
-    }, [controlledOnThemeChange]);
-
-    // Sync generated CSS when controlled theme changes
-    useEffect(() => {
-        if (controlledTheme !== undefined) {
-            setGeneratedCss(getThemeCss(controlledTheme));
-            setIsThemeManuallySelected(true);
-        }
-    }, [controlledTheme]);
 
     // Computed values
     // Use DOM-based dark mode detection since ThemeToggle uses direct DOM manipulation
@@ -675,7 +606,9 @@ export default function ComponentEditor({
         // Prefer DOM-based detection as it's more reliable with current ThemeToggle implementation
         return isDarkFromDom || (resolvedTheme === "dark");
     }, [isDarkFromDom, resolvedTheme]);
-    const effectiveCss = useEffectiveCss(globalCss, isThemeManuallySelected, generatedCss);
+
+    // Use global CSS from context
+    const effectiveCss = globalCss;
 
     // Sandpack configuration - files should only update when source data changes.
     // Sandpack will handle live updates internally when user edits in the editor.
@@ -762,8 +695,6 @@ export default function ComponentEditor({
                     <InternalToolbar
                         componentDisplayName={componentDisplayName}
                         componentDescription={componentDescription}
-                        currentTheme={currentTheme}
-                        onThemeChange={handleThemeChange}
                         saveStatus={saveStatus}
                         readOnly={readOnly}
                         onSave={onSave}
