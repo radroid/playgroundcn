@@ -1,7 +1,5 @@
 "use client";
 
-import { toast } from "sonner";
-
 export type CachedFiles = Record<string, { code: string }>;
 
 // localStorage key prefix for Sandpack file caches
@@ -39,17 +37,9 @@ export function setComponentCache(
     
     window.localStorage.setItem(key, serialized);
     console.log('[Storage] Saved to localStorage:', { key, filesCount: Object.keys(files).length });
-    
-    // Show toast notification when saving
-    toast.success("Changes saved locally", {
-      description: "Your edits have been saved to local storage.",
-    });
   } catch (error) {
     console.error('[Storage] Failed to save to localStorage:', error);
     // localStorage might be full or disabled, fail silently
-    toast.error("Failed to save", {
-      description: "Could not save changes to local storage.",
-    });
   }
 }
 
