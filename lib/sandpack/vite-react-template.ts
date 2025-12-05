@@ -38,8 +38,8 @@ export const getIndexHtml = (themeCss: string, isDark: boolean) => `<!doctype ht
 ${themeCss}
     </style>
   </head>
-  <body style="margin: 30px; padding: 30px;">
-    <div id="root" style="min-height: 100vh;"></div>
+  <body style="margin: 0; padding: 0; display: flex; align-items: flex-start; justify-content: center; overflow-x: auto; box-sizing: border-box; width: 100%;">
+    <div id="root" style="width: 100%; max-width: 100%; padding: 20px; box-sizing: border-box; flex-shrink: 0;"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>`;
@@ -90,11 +90,15 @@ export const getIndexCss = () => `/* Tailwind CSS is loaded via CDN */
 body {
   margin: 0;
   padding: 0;
+  overflow-x: auto;
 }
 
 #root {
-  min-height: 100vh;
   width: 100%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  flex-direction: column;
 }`;
 
 /**

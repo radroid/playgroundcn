@@ -774,7 +774,7 @@ export default function ComponentEditor({
 
                     {/* Preview Panel with styling */}
                     <div className="flex-1 p-4 bg-muted/30 flex items-center justify-center" style={{ minWidth: 0, minHeight: 0, overflow: "hidden" }}>
-                        <div className="h-full w-full bg-background rounded-lg overflow-hidden shadow-sm border border-border/50">
+                        <div className="h-full w-full bg-background rounded-lg overflow-auto shadow-sm border border-border/50">
                             <SandpackPreview
                                 style={{ height: "100%", width: "100%" }}
                                 showOpenInCodeSandbox={true}
