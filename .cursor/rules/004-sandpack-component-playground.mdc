@@ -1,5 +1,5 @@
 ---
-description: Define how Sandpack and ComponentEditor should be structured and used.
+description: Define how Sandpack and ComponentEditor should be structured and used with Vite React TypeScript template.
 globs:
   - "components/editor/ComponentEditor.tsx"
   - "components/ComponentPlayground.tsx"
@@ -14,16 +14,14 @@ alwaysApply: true
 - It must be a **client component** (`"use client"`).
 - Key props:
   - `code: string` — main component source code
-  - `previewCode: string` — example/demo code that uses the component
-  - `globalCss?: string` — optional precompiled CSS
+  - `previewCode: string` — example/demo code that uses the component (already in App format: `export default function App()`)
+  - `globalCss?: string` — optional theme CSS (injected into `/index.html` inline style block)
   - `componentName: string` — used to construct component path
   - `dependencies?: Record<string, string>` — NPM dependencies
   - `registryDependenciesCode?: Record<string, { code: string; dependencies?: Record<string, string> }>` — registry component code
   - `saveStatus?: SaveStatus` — current save status
   - `componentDisplayName?: string` — display name for toolbar
   - `componentDescription?: string` — description for toolbar
-  - `currentTheme?: string` — controlled theme (optional)
-  - `onThemeChange?: (theme: string) => void` — theme change callback (required if currentTheme provided)
 - Features:
   - Theme switching via `ThemeSelector` in toolbar
   - Auto-save every 30 seconds when there are unsaved changes
@@ -31,35 +29,50 @@ alwaysApply: true
   - Copy code button
   - Registry dependency tab markers
   - Theme context support via `ComponentThemeProvider`
-  - Dark mode support synced with Next.js theme
+  - Dark mode support synced with DOM (via `class="dark"` on html element)
 
 ## ComponentPlayground (Simpler Wrapper)
 
 - `ComponentPlayground` (`components/ComponentPlayground.tsx`) is a simpler wrapper for basic use cases.
-- Uses `prepareSandpackFiles` from `lib/sandpack/files.ts` to build the files map.
+- Uses Vite React TypeScript template structure for Sandpack files.
 - Accepts: `exampleCode`, `template`, `dependencies`, `globalsCss`, `title`, `componentPath`, `componentCode`, `registryDependenciesCode`.
 
-## Sandpack Files Map Structure
+## Sandpack Files Map Structure (Vite React TypeScript)
 
-- Use `prepareSandpackFiles` from `lib/sandpack/files.ts` to build the files map.
-- Standard files structure:
-  - `/Preview.tsx` — the example code (editable)
-  - `/App.tsx` — app wrapper that configures Tailwind and handles dark mode (from `lib/sandpack/sandpack-app-template.ts`)
-  - `/index.tsx` — entry point that imports globals.css and renders App
-  - `/styles/globals.css` — precompiled theme CSS (no `@tailwind` directives)
-  - `/lib/utils.ts` — utility functions (cn helper)
+- Use Vite React TypeScript structure:
+  - `/index.html` — HTML file with Tailwind CDN script and inline theme CSS in `<style type="text/tailwindcss">` block
+  - `/src/main.tsx` — React entry point that creates root and renders App
+  - `/src/App.tsx` — main component that renders the preview (from `previewCode`, already in App format)
+  - `/src/index.css` — minimal CSS file (Tailwind is loaded via CDN)
+  - `/src/components/ui/[componentName].tsx` — main component being edited
+  - `/src/components/ui/[dependency].tsx` — registry dependency components (if any)
+  - `/src/lib/utils.ts` — utility functions (cn helper)
+  - `/src/hooks/use-mobile.ts` — mobile detection hook
+  - `/vite.config.ts` — Vite configuration with path aliases (`@/` → `./src`)
   - `/tsconfig.json` — TypeScript configuration with path aliases
-  - `/components/ui/<name>.tsx` — registry dependency components (if any)
-  - Main component file at path specified by `componentPath` (e.g., `/components/ui/button.tsx`)
 
 ## Sandpack Configuration
 
-- Template: `"react-ts"` (default)
-- External resources: Tailwind CDN and Google Fonts (configured in `ComponentEditor`)
-- Active file: `/Preview.tsx` (or component path for editing)
-- Visible files: Preview, component, globals.css, and registry dependencies
+- Template: `"vite-react-ts"` (not `"nextjs"` or `"react-ts"`)
+- External resources: Only Google Fonts (no precompiled CSS bundles)
+- Dependencies: Defined in `customSetup.dependencies` (not in package.json file)
+- Active file: `/src/App.tsx` or component path for editing
+- Visible files: `/index.html`, `/src/main.tsx`, `/src/App.tsx`, `/src/index.css`, component, and registry dependencies
 - Auto-reload and autorun enabled
 - Recompile mode: `"immediate"` with 0 delay
+
+## Vite React TypeScript Template File Generation
+
+- Use `lib/sandpack/vite-react-template.ts` to generate Vite files:
+  - `getIndexHtml(themeCss, isDark)` — generates `/index.html` with Tailwind CDN and inline theme CSS
+  - `getMainTsx()` — generates `/src/main.tsx` React entry point
+  - `getAppTsx(previewCode)` — generates `/src/App.tsx` that renders preview (previewCode is already in App format)
+  - `getIndexCss()` — generates `/src/index.css` (minimal, Tailwind via CDN)
+  - `getViteConfig()` — generates `/vite.config.ts` with path aliases
+  - `UTILS_CODE` — utility functions (cn helper)
+  - `USE_MOBILE_CODE` — mobile detection hook
+- Theme CSS is injected into `/index.html` in the `<style type="text/tailwindcss">` block.
+- Dark mode is handled via `class="dark"` on the `<html>` element.
 
 ## Layout Expectations
 
@@ -67,4 +80,3 @@ alwaysApply: true
 - All Sandpack logic runs client-side; do not attempt to SSR Sandpack.
 - Use `SandpackLayout` from `@codesandbox/sandpack-react` for proper layout.
 - Editor container should have proper flex styling and overflow handling.
-

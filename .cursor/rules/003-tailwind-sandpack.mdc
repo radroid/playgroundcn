@@ -1,0 +1,63 @@
+---
+description: Ensure Tailwind CSS v4 is correctly configured and consumed inside the Sandpack Vite React TypeScript environment.
+globs:
+  - "components/editor/ComponentEditor.tsx"
+  - "lib/context/global-css-context.tsx"
+  - "lib/sandpack/**"
+alwaysApply: true
+---
+
+## Vite React TypeScript Template with Tailwind CSS v4 in Sandpack
+
+- **Vite React TypeScript Template in Sandpack**:
+  - Sandpack uses the `"vite-react-ts"` template.
+  - The Sandpack environment runs a Vite + React + TypeScript application.
+  - Tailwind CSS v4 is loaded via CDN (`@tailwindcss/browser@4`) in the HTML.
+  - No build-time compilation needed; Tailwind processes CSS at runtime via the browser CDN.
+
+- **File Structure**:
+  - `/index.html` — HTML file with Tailwind CDN script and inline theme CSS
+  - `/src/main.tsx` — React entry point that renders the App component
+  - `/src/App.tsx` — main component that renders the preview (from `previewCode`)
+  - `/src/index.css` — minimal CSS file (Tailwind is loaded via CDN)
+  - `/src/components/ui/[componentName].tsx` — main component being edited
+  - `/src/components/ui/[dependency].tsx` — registry dependency components
+  - `/src/lib/utils.ts` — utility functions (cn helper)
+  - `/src/hooks/use-mobile.ts` — mobile detection hook
+  - `/vite.config.ts` — Vite configuration with path aliases
+  - `/tsconfig.json` — TypeScript configuration with path aliases
+
+- **Tailwind CSS v4 Configuration**:
+  - Tailwind v4 is loaded via CDN: `<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>` in `/index.html`.
+  - Theme CSS is injected inline in a `<style type="text/tailwindcss">` block in the HTML head.
+  - Theme variables are defined in `:root` and `.dark` selectors.
+  - `@theme inline { ... }` block maps CSS variables to Tailwind tokens.
+  - No PostCSS or Tailwind config files needed (CDN handles everything).
+
+- **Theme CSS Injection**:
+  - `GlobalCssProvider` in `lib/context/global-css-context.tsx` generates `globalCss`.
+  - `globalCss` is injected into Sandpack at `/index.html` in the `<style type="text/tailwindcss">` block.
+  - `globalCss` includes:
+    - `:root` and `.dark` CSS variables
+    - `@theme inline { ... }` block mapping variables to Tailwind tokens
+    - `@layer base` styles for body, fonts, etc.
+    - Animation utilities for component animations
+  - When theme changes, `ComponentEditor` updates `/index.html` via `sandpack.updateFile()`.
+  - Dark mode is handled via `class="dark"` on the `<html>` element.
+
+## Sandpack Integration
+
+- **Template**: Use `template="vite-react-ts"` in `SandpackProvider`.
+- **External Resources**: Only Google Fonts (no precompiled Tailwind bundle).
+- **Dependencies**: Defined in `customSetup.dependencies` (not in package.json):
+  - Base: `react`, `react-dom`, `@types/react`, `@types/react-dom`, `@vitejs/plugin-react`, `typescript`, `vite`
+  - Utilities: `clsx`, `tailwind-merge`, `tw-animate-css`
+  - Component-specific dependencies from registry
+- **File Updates**: Update `/index.html` when theme changes, not separate CSS files.
+
+## Constraints
+
+- **No precompiled Tailwind**: Do not create or use any precompiled CSS bundles.
+- **No package.json**: Dependencies are defined in `customSetup.dependencies`, not in a package.json file.
+- **CDN-based Tailwind**: Tailwind CSS v4 runs entirely via the browser CDN.
+- **Static export compatibility**: Sandpack runs client-side; no impact on main Next.js app static export.

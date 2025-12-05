@@ -11,7 +11,6 @@ alwaysApply: true
 
 - Use **TypeScript** with explicit types for registries and component props.
 - Mark any component that uses hooks or state with `"use client"` at the top.
-- Prefer clear Tailwind class names over overly compressed utility chains.
 - Prefer **Shadcn UI components** (`components/ui/*`) for building UI (buttons, inputs, layout, etc.) over hand-rolled primitives, unless there is a strong reason not to.
 - Use proper file organization:
   - Editor components in `components/editor/`
@@ -29,7 +28,7 @@ alwaysApply: true
   - Reset functionality
 - Use `ComponentThemeProvider` to share theme state across multiple editors on a page.
 - Theme generation uses `getThemeCss()` from `theme-generator.ts` which reads from `registry.json`.
-- Sandpack files are prepared via `prepareSandpackFiles()` from `lib/sandpack/files.ts`.
+- Sandpack files are prepared via `useSandpackFiles()` hook in `ComponentEditor.tsx` using functions from `lib/sandpack/vite-react-template.ts`.
 
 ## Assistance Preferences
 

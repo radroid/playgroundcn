@@ -13,7 +13,16 @@ import { Copy, Check } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { SaveStatus } from "./SaveStatusIndicator";
 import { EditorToolbar } from "./EditorToolbar";
-import { getAppCode, UTILS_CODE, TSCONFIG_CODE, USE_MOBILE_CODE } from "@/lib/sandpack/sandpack-app-template";
+import {
+    getIndexHtml,
+    getMainTsx,
+    getAppTsx,
+    getIndexCss,
+    getViteConfig,
+    UTILS_CODE,
+    TSCONFIG_CODE,
+    USE_MOBILE_CODE,
+} from "@/lib/sandpack/vite-react-template";
 import { getComponentCache, setComponentCache } from "./cache";
 import { useGlobalCss } from "@/lib/context/global-css-context";
 
@@ -51,18 +60,13 @@ export interface ComponentEditorProps {
 // =============================================================================
 
 const EXTERNAL_RESOURCES = [
-    "https://cdn.tailwindcss.com?plugins=forms,typography",
     // Google Fonts used by tweakcn themes
     "https://fonts.googleapis.com/css2?family=Inter:wght@100..900&family=JetBrains+Mono:wght@100..800&family=Source+Serif+4:wght@200..900&family=Geist+Mono:wght@100..900&family=Bricolage+Grotesque:wght@200..800&family=Playfair+Display:wght@400..900&family=DM+Serif+Display&family=IBM+Plex+Mono:wght@100..700&family=Fira+Code:wght@300..700&family=Space+Grotesk:wght@300..700&family=Source+Code+Pro:wght@200..900&family=Outfit:wght@100..900&family=Poppins:wght@100..900&family=DM+Sans:wght@100..900&family=Lora:wght@400..700&family=Merriweather:wght@300..900&family=Rubik:wght@300..900&family=Space+Mono:wght@400;700&family=Archivo:wght@100..900&family=Inconsolata:wght@200..900&family=Montserrat:wght@100..900&family=Lato:wght@100..900&family=Nunito:wght@200..900&family=Quicksand:wght@300..700&family=Raleway:wght@100..900&family=Work+Sans:wght@100..900&family=Karla:wght@200..800&family=Press+Start+2P&family=Pixelify+Sans:wght@400..700&family=VT323&family=Courier+Prime:wght@400;700&display=swap",
 ];
 
 const DEFAULT_DEPENDENCIES = {
-    "lucide-react": "latest",
-    clsx: "latest",
     "tailwind-merge": "latest",
-    "@types/react": "^18.2.0",
-    "@types/react-dom": "^18.2.0",
-    "@types/node": "^20.0.0",
+    "tw-animate-css": "^1.4.0",
 };
 
 // =============================================================================
@@ -110,24 +114,30 @@ function CopyCodeButton() {
 }
 
 // =============================================================================
-// CSS Updater Component (updates globals.css when CSS theme changes)
+// CSS Updater Component (updates index.html when CSS theme changes)
 // =============================================================================
 
 function CssUpdater({
     effectiveCss,
+    isDark,
 }: {
     effectiveCss: string;
+    isDark: boolean;
 }) {
     const { sandpack } = useSandpack();
     const prevCssRef = useRef(effectiveCss);
+    const prevIsDarkRef = useRef(isDark);
 
-    // Update globals.css when CSS changes (for style theme changes)
+    // Update index.html when CSS changes (for style theme changes)
+    // For Vite, we update /index.html with inline theme CSS
     useEffect(() => {
-        if (prevCssRef.current !== effectiveCss) {
-            sandpack.updateFile("/styles/globals.css", effectiveCss);
+        if (prevCssRef.current !== effectiveCss || prevIsDarkRef.current !== isDark) {
+            const newIndexHtml = getIndexHtml(effectiveCss, isDark);
+            sandpack.updateFile("/index.html", newIndexHtml);
             prevCssRef.current = effectiveCss;
+            prevIsDarkRef.current = isDark;
         }
-    }, [effectiveCss, sandpack]);
+    }, [effectiveCss, isDark, sandpack]);
 
     return null;
 }
@@ -150,7 +160,7 @@ function RegistryTabMarker({
         if (!registryDependenciesCode) return;
 
         const registryPaths = Object.keys(registryDependenciesCode).map(
-            name => `/components/ui/${name}.tsx`
+            name => `/src/components/ui/${name}.tsx`
         );
 
         const markTabs = () => {
@@ -247,11 +257,17 @@ function InternalToolbar({
     const { sandpack } = useSandpack();
 
     // Get globalCss from sandpack files if not provided as prop
+    // For Vite, CSS is embedded in index.html
     const globalCss = useMemo(() => {
         if (propGlobalCss) return propGlobalCss;
-        const cssFile = sandpack.files["/styles/globals.css"];
-        if (cssFile) {
-            return typeof cssFile === "string" ? cssFile : cssFile.code;
+        const htmlFile = sandpack.files["/index.html"];
+        if (htmlFile) {
+            const html = typeof htmlFile === "string" ? htmlFile : htmlFile.code;
+            // Extract CSS from <style type="text/tailwindcss"> block
+            const match = html.match(/<style type="text\/tailwindcss">\s*([\s\S]*?)\s*<\/style>/);
+            if (match && match[1]) {
+                return match[1].trim();
+            }
         }
         return undefined;
     }, [propGlobalCss, sandpack.files]);
@@ -427,7 +443,8 @@ function useSandpackFiles(
     effectiveCss: string,
     isDark: boolean,
     registryDependenciesCode?: Record<string, { code: string; dependencies?: Record<string, string> }>,
-    savedFiles?: Record<string, { code: string }>
+    savedFiles?: Record<string, { code: string }>,
+    dependencies?: Record<string, string>
 ) {
     const registryFiles = useMemo(() => {
         if (!registryDependenciesCode) return {};
@@ -435,7 +452,7 @@ function useSandpackFiles(
         const files = Object.entries(registryDependenciesCode).reduce(
             (acc, [name, data]) => ({
                 ...acc,
-                [`/components/ui/${name}.tsx`]: {
+                [`/src/components/ui/${name}.tsx`]: {
                     code: data.code,
                     hidden: false,
                 },
@@ -450,7 +467,7 @@ function useSandpackFiles(
         () => {
             // Prefer any cached/saved versions of user-editable files.
             const resolvedPreviewCode =
-                savedFiles?.["/Preview.tsx"]?.code ?? previewCode;
+                savedFiles?.["/src/App.tsx"]?.code ?? previewCode;
             const resolvedComponentCode =
                 savedFiles?.[componentPath]?.code ?? code;
 
@@ -471,27 +488,35 @@ function useSandpackFiles(
             );
 
             return {
-                "/App.tsx": getAppCode(isDark),
-                "/Preview.tsx": resolvedPreviewCode,
+                // Vite React files
+                "/index.html": getIndexHtml(effectiveCss, isDark),
+                "/src/main.tsx": getMainTsx(),
+                "/src/App.tsx": getAppTsx(resolvedPreviewCode),
+                "/src/index.css": getIndexCss(),
+                // Component and dependencies
                 [componentPath]: resolvedComponentCode,
-                "/lib/utils.ts": {
-                    code: UTILS_CODE,
+                ...resolvedRegistryFiles,
+                // Config files
+                "/vite.config.ts": {
+                    code: getViteConfig(),
                     hidden: true,
                 },
-                // Always use the currently generated/effective CSS for the active theme
-                "/styles/globals.css": effectiveCss,
                 "/tsconfig.json": {
                     code: TSCONFIG_CODE,
                     hidden: true,
                 },
-                "/hooks/use-mobile.ts": {
+                // Utility files
+                "/src/lib/utils.ts": {
+                    code: UTILS_CODE,
+                    hidden: true,
+                },
+                "/src/hooks/use-mobile.ts": {
                     code: USE_MOBILE_CODE,
                     hidden: true,
                 },
-                ...resolvedRegistryFiles,
             };
         },
-        [componentPath, isDark, effectiveCss, code, previewCode, registryFiles, savedFiles]
+        [componentPath, isDark, effectiveCss, code, previewCode, registryFiles, savedFiles, dependencies]
     );
 }
 
@@ -501,17 +526,19 @@ function useSandpackOptions(
 ) {
     const registryFilePaths = useMemo(() => {
         if (!registryDependenciesCode) return [];
-        return Object.keys(registryDependenciesCode).map(name => `/components/ui/${name}.tsx`);
+        return Object.keys(registryDependenciesCode).map(name => `/src/components/ui/${name}.tsx`);
     }, [registryDependenciesCode]);
 
     return useMemo(
         () => ({
             externalResources: EXTERNAL_RESOURCES,
-            activeFile: "/Preview.tsx",
+            activeFile: "/src/App.tsx",
             visibleFiles: [
-                "/Preview.tsx",
+                "/index.html",
+                "/src/main.tsx",
+                "/src/App.tsx",
+                "/src/index.css",
                 componentPath,
-                "/styles/globals.css",
                 ...registryFilePaths,
             ],
             autoReload: true,
@@ -538,12 +565,28 @@ function useSandpackSetup(
             }, {} as Record<string, string>)
             : {};
 
+        // Base dependencies for Vite React TypeScript
+        const baseDependencies = {
+            "react": "^18.2.0",
+            "react-dom": "^18.2.0",
+            "@types/react": "^18.2.0",
+            "@types/react-dom": "^18.2.0",
+            "@vitejs/plugin-react": "^4.2.0",
+            "typescript": "^5.6.3",
+            "vite": "^5.0.0",
+            "clsx": "^2.1.1",
+            "lucide-react": "latest",
+        };
+
+        const allDependencies = {
+            ...baseDependencies,
+            ...DEFAULT_DEPENDENCIES,
+            ...registryNpmDeps,
+            ...(dependencies || {}),
+        };
+
         return {
-            dependencies: {
-                ...DEFAULT_DEPENDENCIES,
-                ...registryNpmDeps,
-                ...(dependencies || {}),
-            },
+            dependencies: allDependencies,
         };
     }, [serializedDeps, serializedRegistryDeps]);
 }
@@ -567,8 +610,8 @@ export default function ComponentEditor({
     componentDescription,
 }: ComponentEditorProps) {
     const { resolvedTheme } = useTheme();
-    const { globalCss, currentTheme } = useGlobalCss();
-    const componentPath = `/components/ui/${componentName}.tsx`;
+    const { globalCss } = useGlobalCss();
+    const componentPath = `/src/components/ui/${componentName}.tsx`;
     
     // Track dark mode from DOM since ThemeToggle uses direct DOM manipulation
     // This ensures we stay in sync with the actual dark mode state
@@ -619,15 +662,11 @@ export default function ComponentEditor({
         effectiveCss,
         isDark,
         registryDependenciesCode,
-        lastSavedFiles
+        lastSavedFiles,
+        dependencies
     );
     const options = useSandpackOptions(componentPath, registryDependenciesCode);
     const customSetup = useSandpackSetup(dependencies, registryDependenciesCode);
-
-    // Use a ref to stabilize files - refs don't trigger re-renders, keeping Sandpack's internal state intact.
-    // This is critical: when the files prop changes, Sandpack can reset its internal state and overwrite user edits.
-    const stableFilesRef = useRef(files);
-    const lastSourceDataRef = useRef<string>("");
 
     // Create a hash of source data to detect meaningful changes to the "source of truth"
     // for files (initial code/preview/registry). Theme and style changes are handled
@@ -638,15 +677,6 @@ export default function ComponentEditor({
             : '';
         return `${componentPath}|${code}|${previewCode}|${registryHash}`;
     }, [componentPath, code, previewCode, registryDependenciesCode]);
-
-    // Update ref when source data changes - this updates the files object without triggering re-render
-    // Sandpack will sync files via updateFile calls from InternalEditor when needed
-    useEffect(() => {
-        if (lastSourceDataRef.current !== sourceDataKey) {
-            lastSourceDataRef.current = sourceDataKey;
-            stableFilesRef.current = files;
-        }
-    }, [sourceDataKey, files]);
 
     // Initialize / re-baseline last saved files when the underlying source data
     // changes, but only if we don't already have a cache for this component.
@@ -665,30 +695,27 @@ export default function ComponentEditor({
             setLastSavedFiles(savedFiles);
             setComponentCache(componentName, savedFiles);
         }
-    }, [code, previewCode, registryDependenciesCode, currentTheme, componentName, files, lastSavedFiles]);
+    }, [code, previewCode, registryDependenciesCode, componentName, files, lastSavedFiles]);
 
     // Note: lastSavedFiles is updated in InternalEditor when saveStatus becomes 'saved'
 
     // Key for SandpackProvider - include isDark so Sandpack remounts with correct editor theme
     // Note: Remounting will reset user edits, which is acceptable for theme changes
-    const registryHash = registryDependenciesCode
-        ? Object.keys(registryDependenciesCode).join(',')
-        : '';
-    const providerKey = `sandpack-${sourceDataKey}-${isDark ? "dark" : "light"}-${registryHash}`;
+    const providerKey = `sandpack-${sourceDataKey}-${isDark ? "dark" : "light"}`;
 
     return (
         <div className="w-full flex flex-col">
             <SandpackProvider
                 key={providerKey}
-                template="react-ts"
+                template="vite-react-ts"
                 theme={isDark ? "dark" : "light"}
                 files={files}
                 options={options}
                 customSetup={customSetup}
                 style={{ display: "flex", flexDirection: "column" }}
             >
-                {/* CSS Updater - updates globals.css when CSS theme changes (not dark mode) */}
-                <CssUpdater effectiveCss={effectiveCss} />
+                {/* CSS Updater - updates index.html when CSS theme changes */}
+                <CssUpdater effectiveCss={effectiveCss} isDark={isDark} />
 
                 {/* Toolbar - outside SandpackLayout but inside SandpackProvider */}
                 {!readOnly && (
