@@ -31,6 +31,7 @@ export const COMPONENT_SPECIFIC_DEPS: Record<string, Record<string, string>> = {
   },
   breadcrumb: {
     "lucide-react": "^0.555.0",
+    "@radix-ui/react-slot": "^1.0.0",
   },
   button: {
     "@radix-ui/react-slot": "^1.0.0",

@@ -534,8 +534,6 @@ function useSandpackOptions(
             externalResources: EXTERNAL_RESOURCES,
             activeFile: "/src/App.tsx",
             visibleFiles: [
-                "/index.html",
-                "/src/main.tsx",
                 "/src/App.tsx",
                 "/src/index.css",
                 componentPath,

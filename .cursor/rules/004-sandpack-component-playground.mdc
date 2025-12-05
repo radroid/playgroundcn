@@ -40,8 +40,8 @@ alwaysApply: true
 ## Sandpack Files Map Structure (Vite React TypeScript)
 
 - Use Vite React TypeScript structure:
-  - `/index.html` — HTML file with Tailwind CDN script and inline theme CSS in `<style type="text/tailwindcss">` block
-  - `/src/main.tsx` — React entry point that creates root and renders App
+  - `/index.html` — HTML file with Tailwind CDN script and inline theme CSS in `<style type="text/tailwindcss">` block - should be hidden.
+  - `/src/main.tsx` — React entry point that creates root and renders App - should be hidden.
   - `/src/App.tsx` — main component that renders the preview (from `previewCode`, already in App format)
   - `/src/index.css` — minimal CSS file (Tailwind is loaded via CDN)
   - `/src/components/ui/[componentName].tsx` — main component being edited
