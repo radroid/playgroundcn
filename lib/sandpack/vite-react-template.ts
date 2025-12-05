@@ -14,6 +14,25 @@ export const getIndexHtml = (themeCss: string, isDark: boolean) => `<!doctype ht
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Component Preview</title>
+    <script>
+      // Suppress Vite dev server warnings
+      (function() {
+        const originalWarn = console.warn;
+        console.warn = function(message, ...args) {
+          if (typeof message === 'string') {
+            // Suppress "clearScreenDown" warning
+            if (message.includes('clearScreenDown')) {
+              return;
+            }
+            // Suppress Vite CJS deprecation warning
+            if (message.includes("CJS build of Vite's Node API is deprecated")) {
+              return;
+            }
+          }
+          originalWarn.apply(console, [message, ...args]);
+        };
+      })();
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <style type="text/tailwindcss">
 ${themeCss}
