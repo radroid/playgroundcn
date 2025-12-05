@@ -153,20 +153,18 @@ export function GlobalCssProvider({ children }: { children: React.ReactNode }) {
     setCssVariables((prev) => {
       const updated = { ...prev };
       if (mode === "shared") {
-        updated.shared = { ...prev.shared, [key]: value };
+        updated.shared = { ...(prev.shared || {}), [key]: value };
       } else {
         updated[mode] = { ...prev[mode], [key]: value };
       }
-      return updated;
-    });
-
-    // Regenerate CSS and update
-    setCssVariables((prev) => {
-      const newCss = generateCssFromVariables(prev);
+      
+      // Regenerate CSS and update theme detection
+      const newCss = generateCssFromVariables(updated);
       setGlobalCss(newCss);
       const detected = detectThemeFromCss(newCss);
       setCurrentTheme(detected);
-      return prev;
+      
+      return updated;
     });
   }, []);
 
