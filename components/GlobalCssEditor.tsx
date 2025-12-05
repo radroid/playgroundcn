@@ -1,8 +1,10 @@
 "use client";
 
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState, useRef, useEffect } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { Combobox, ComboboxOption } from "@/components/ui/combobox";
 import { useGlobalCss } from "@/lib/context/global-css-context";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -253,6 +255,80 @@ function hexToRgb(hex: string): [number, number, number] {
   return [128, 128, 128];
 }
 
+// Validate color input with format-specific range checks
+function validateColorFormat(value: string): { valid: boolean; error?: string } {
+  if (!value) return { valid: false, error: "Empty input" };
+  const trimmed = value.trim();
+
+  // HEX validation: #RGB or #RRGGBB
+  if (trimmed.startsWith("#")) {
+    const hexMatch = trimmed.match(/^#([a-f0-9]{3}|[a-f0-9]{6})$/i);
+    if (!hexMatch) {
+      return { valid: false, error: "Invalid hex format. Use #RGB or #RRGGBB" };
+    }
+    return { valid: true };
+  }
+
+  // RGB validation: rgb(0-255, 0-255, 0-255)
+  if (trimmed.startsWith("rgb(")) {
+    const rgbMatch = trimmed.match(/^rgb\(\s*(\d+)\s*,?\s*(\d+)\s*,?\s*(\d+)\s*\)$/i);
+    if (!rgbMatch) {
+      return { valid: false, error: "Invalid rgb format. Use rgb(r, g, b)" };
+    }
+    const r = parseInt(rgbMatch[1]);
+    const g = parseInt(rgbMatch[2]);
+    const b = parseInt(rgbMatch[3]);
+    if (r < 0 || r > 255 || g < 0 || g > 255 || b < 0 || b > 255) {
+      return { valid: false, error: "RGB values must be 0-255" };
+    }
+    return { valid: true };
+  }
+
+  // HSL validation: hsl(0-360 0-100% 0-100%)
+  if (trimmed.startsWith("hsl(")) {
+    const hslMatch = trimmed.match(/^hsl\(\s*(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)%\s+(\d+(?:\.\d+)?)%\s*\)$/i);
+    if (!hslMatch) {
+      return { valid: false, error: "Invalid hsl format. Use hsl(h s% l%)" };
+    }
+    const h = parseFloat(hslMatch[1]);
+    const s = parseFloat(hslMatch[2]);
+    const l = parseFloat(hslMatch[3]);
+    if (h < 0 || h > 360) {
+      return { valid: false, error: "Hue must be 0-360" };
+    }
+    if (s < 0 || s > 100) {
+      return { valid: false, error: "Saturation must be 0-100%" };
+    }
+    if (l < 0 || l > 100) {
+      return { valid: false, error: "Lightness must be 0-100%" };
+    }
+    return { valid: true };
+  }
+
+  // OKLCH validation: oklch(0-1 0-0.5 0-360)
+  if (trimmed.startsWith("oklch(")) {
+    const oklchMatch = trimmed.match(/^oklch\(\s*(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)\s*\)$/i);
+    if (!oklchMatch) {
+      return { valid: false, error: "Invalid oklch format. Use oklch(l c h)" };
+    }
+    const l = parseFloat(oklchMatch[1]);
+    const c = parseFloat(oklchMatch[2]);
+    const h = parseFloat(oklchMatch[3]);
+    if (l < 0 || l > 1) {
+      return { valid: false, error: "Lightness must be 0-1" };
+    }
+    if (c < 0 || c > 0.5) {
+      return { valid: false, error: "Chroma must be 0-0.5" };
+    }
+    if (h < 0 || h > 360) {
+      return { valid: false, error: "Hue must be 0-360" };
+    }
+    return { valid: true };
+  }
+
+  return { valid: false, error: "Unknown color format" };
+}
+
 // Parse any color format to RGB
 function parseColorToRgb(value: string): [number, number, number] {
   if (!value) return [128, 128, 128];
@@ -405,18 +481,94 @@ function VariableInput({ variableKey, value, colorFormat, onChange }: VariableIn
     return extractHexFromValue(value);
   }, [value, isTextVariable]);
 
-  const displayValue = useMemo(() => {
+  const formattedValue = useMemo(() => {
     if (isTextVariable) return value;
     return convertColorToFormat(value, colorFormat);
   }, [value, colorFormat, isTextVariable]);
+
+  // Local state for text input to allow free typing
+  const [localTextValue, setLocalTextValue] = useState(formattedValue);
+  const [isFocused, setIsFocused] = useState(false);
+  const [isInvalid, setIsInvalid] = useState(false);
+  const [shouldShake, setShouldShake] = useState(false);
+  const lastValidValue = useRef(formattedValue);
+
+  // Validation helper - uses format-specific validation with range checks
+  const isValidColor = useCallback((input: string): boolean => {
+    const result = validateColorFormat(input);
+    return result.valid;
+  }, []);
+
+  // Sync local state when external value or format changes (only when not focused)
+  useEffect(() => {
+    if (!isFocused) {
+      setLocalTextValue(formattedValue);
+      lastValidValue.current = formattedValue;
+    }
+  }, [formattedValue, isFocused]);
+
+  // Debounced validation for color inputs
+  useEffect(() => {
+    if (!isFocused || isTextVariable) return;
+
+    const timer = setTimeout(() => {
+      if (isValidColor(localTextValue)) {
+        lastValidValue.current = localTextValue;
+        setIsInvalid(false);
+        onChange(localTextValue);
+      } else {
+        setIsInvalid(true);
+        setShouldShake(true);
+        setTimeout(() => setShouldShake(false), 300);
+      }
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [localTextValue, isFocused, isTextVariable, isValidColor, onChange]);
 
   const handleColorChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       // Color picker gives hex, convert to target format
       const newValue = rgbToFormat(...hexToRgb(e.target.value), colorFormat);
       onChange(newValue);
+      setLocalTextValue(newValue);
+      lastValidValue.current = newValue;
+      setIsInvalid(false);
     },
     [onChange, colorFormat]
+  );
+
+  const handleTextInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setLocalTextValue(e.target.value);
+    },
+    []
+  );
+
+  const handleTextBlur = useCallback(() => {
+    setIsFocused(false);
+    if (isInvalid) {
+      setLocalTextValue(lastValidValue.current);
+      setIsInvalid(false);
+    }
+  }, [isInvalid]);
+
+  const handleTextFocus = useCallback(() => {
+    setIsFocused(true);
+  }, []);
+
+  const handleTextKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === "Enter") {
+        if (isValidColor(localTextValue)) {
+          lastValidValue.current = localTextValue;
+          setIsInvalid(false);
+          onChange(localTextValue);
+        }
+        (e.target as HTMLInputElement).blur();
+      }
+    },
+    [localTextValue, isValidColor, onChange]
   );
 
   const handleTextChange = useCallback(
@@ -428,40 +580,50 @@ function VariableInput({ variableKey, value, colorFormat, onChange }: VariableIn
 
   if (isTextVariable) {
     return (
-      <div className="flex items-center gap-2">
-        <Label className="text-xs w-28 shrink-0 truncate" title={displayName}>
+      <div className="space-y-1">
+        <Label className="text-xs truncate" title={displayName}>
           {displayName}
         </Label>
         <Input
           type="text"
           value={value || ""}
           onChange={handleTextChange}
-          className="h-7 text-xs flex-1"
+          className="h-7 text-xs"
         />
       </div>
     );
   }
 
   return (
-    <div className="flex items-center gap-2">
-      <Label className="text-xs w-28 shrink-0 truncate" title={displayName}>
+    <div className="space-y-3">
+      <Label className="text-xs truncate" title={displayName}>
         {displayName}
       </Label>
-      <div className="flex items-center gap-1 flex-1">
-        <div className="relative">
+      <div className="flex items-center gap-1">
+        <label className="relative cursor-pointer">
+          <div
+            className="w-7 h-7 rounded-md border border-border shadow-sm"
+            style={{ backgroundColor: hexValue }}
+          />
           <input
             type="color"
             value={hexValue}
             onChange={handleColorChange}
-            className="w-7 h-7 rounded border border-border cursor-pointer"
-            style={{ padding: 0 }}
+            className="sr-only"
           />
-        </div>
+        </label>
         <Input
           type="text"
-          value={displayValue || ""}
-          onChange={handleTextChange}
-          className="h-7 text-xs flex-1 font-mono"
+          value={localTextValue || ""}
+          onChange={handleTextInputChange}
+          onBlur={handleTextBlur}
+          onFocus={handleTextFocus}
+          onKeyDown={handleTextKeyDown}
+          className={cn(
+            "h-7 text-xs flex-1 font-mono",
+            isInvalid && "!border-red-500 focus-visible:ring-red-500/40",
+            shouldShake && "animate-shake"
+          )}
           placeholder="#000000"
         />
       </div>
@@ -494,11 +656,11 @@ function VariableCategorySection({
   if (relevantVariables.length === 0) return null;
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-4 border-b pb-4 last:border-b-0 last:pb-0">
       <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
         {categoryConfig.label}
       </h4>
-      <div className="space-y-1.5">
+      <div className="space-y-4">
         {relevantVariables.map((key) => (
           <VariableInput
             key={key}
@@ -568,6 +730,16 @@ export function GlobalCssEditor() {
     <div className="flex flex-col h-full min-h-0 gap-3 py-2">
       {/* Fixed header controls - these won't scroll */}
       <div className="shrink-0 space-y-3">
+        {/* Export Buttons */}
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" className="flex-1 text-xs h-8">
+            Export Code
+          </Button>
+          <Button variant="outline" size="sm" className="flex-1 text-xs h-8">
+            Download CSS
+          </Button>
+        </div>
+
         {/* Color Format Selector */}
         <div className="space-y-1.5">
           <Label className="text-xs font-medium text-muted-foreground">Color Format</Label>
