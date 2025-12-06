@@ -40,10 +40,6 @@ export function EditorToolbar({
     globalCss,
     localSaveStatus = 'saved',
 }: EditorToolbarProps) {
-    // Log status changes for debugging
-    React.useEffect(() => {
-        console.log('[EditorToolbar] Local save status changed:', localSaveStatus);
-    }, [localSaveStatus]);
 
     const [isToastShowing, setIsToastShowing] = useState(false);
     const [showResetDialog, setShowResetDialog] = useState(false);
@@ -198,7 +194,7 @@ export function EditorToolbar({
                                 className="h-7 w-7"
                                 onClick={handleResetClick}
                                 title="Reset to initial state"
-                                disabled={!hasChanges}
+                                disabled={hasChanges === false}
                             >
                                 <RotateCcw className="h-4 w-4" />
                             </Button>

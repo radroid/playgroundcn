@@ -293,10 +293,12 @@ function InternalToolbar({
         saveStatusRef.current = saveStatus;
     }, [saveStatus]);
 
-    // Update last saved files when save is successful
-    // Only save if files actually changed
+    // Update last saved files when save is successful (manual saves only)
+    // This effect only runs when saveStatus changes to 'saved', not on every file change
+    const prevSaveStatusRef = useRef(saveStatus);
     useEffect(() => {
-        if (saveStatus === 'saved' && onLastSavedUpdate) {
+        // Only trigger on transition from non-saved to saved (manual save)
+        if (saveStatus === 'saved' && prevSaveStatusRef.current !== 'saved' && onLastSavedUpdate) {
             // Create a snapshot of current files as the last saved state
             const savedFiles: Record<string, { code: string }> = {};
             for (const [path, file] of Object.entries(sandpack.files)) {
@@ -313,18 +315,27 @@ function InternalToolbar({
                 onLastSavedUpdate(savedFiles, true);
             }
         }
+        prevSaveStatusRef.current = saveStatus;
     }, [saveStatus, sandpack.files, onLastSavedUpdate, lastSavedFiles]);
 
     // Track if there are unsaved changes or cached data in localStorage
+    // Use a ref to cache the comparison result and only recalculate when dependencies change
+    const hasChangesRef = useRef(false);
+    const lastFilesHashRef = useRef<string>("");
+    const lastSavedHashRef = useRef<string>("");
+    
     const hasChanges = useMemo(() => {
         // Check if there's cached data in localStorage (even if current files match)
         // This allows reset button to be enabled when there's data to reset
-        const hasCachedData = typeof window !== "undefined" && componentName &&
+        // Only check localStorage if we don't have lastSavedFiles (which means cache exists)
+        const hasCachedData = !lastSavedFiles && typeof window !== "undefined" && componentName &&
             getComponentCache(componentName, exampleId) !== undefined;
         
         if (!lastSavedFiles) {
             // If we have cached data but no lastSavedFiles loaded yet, enable reset
-            return !!hasCachedData;
+            const result = !!hasCachedData;
+            hasChangesRef.current = result;
+            return result;
         }
 
         const currentFiles = sandpack.files;
@@ -335,23 +346,41 @@ function InternalToolbar({
             return typeof file === 'string' ? file : file.code;
         };
 
-        // Only compare files we actually track in lastSavedFiles.
-        // Ignore any additional internal files Sandpack may create.
-        for (const [path, savedFile] of Object.entries(savedFiles)) {
-            const currentFile = currentFiles[path];
-            if (!currentFile) continue;
-
-            const currentCode = getFileCode(currentFile);
-            const savedCode = getFileCode(savedFile);
-
-            if (currentCode !== savedCode) {
-                return true;
-            }
+        // Create simple hash of current files (only user-editable files)
+        const currentHash = Object.entries(savedFiles)
+            .map(([path]) => {
+                const currentFile = currentFiles[path];
+                if (!currentFile) return '';
+                return `${path}:${getFileCode(currentFile)}`;
+            })
+            .sort()
+            .join('|');
+        
+        // Create hash of saved files
+        const savedHash = Object.entries(savedFiles)
+            .map(([path, file]) => `${path}:${getFileCode(file)}`)
+            .sort()
+            .join('|');
+        
+        // Only recalculate if hashes changed
+        const filesChanged = currentHash !== lastFilesHashRef.current;
+        const savedChanged = savedHash !== lastSavedHashRef.current;
+        
+        if (filesChanged) {
+            lastFilesHashRef.current = currentHash;
         }
-
-        // If files match but we have cached data, still enable reset
-        // (user can reset to initial state even if current matches cached)
-        return !!hasCachedData;
+        if (savedChanged) {
+            lastSavedHashRef.current = savedHash;
+        }
+        
+        // Compare hashes to detect changes
+        const hasFileChanges = currentHash !== savedHash;
+        const result = hasFileChanges || !!hasCachedData;
+        
+        // Update ref
+        hasChangesRef.current = result;
+        
+        return result;
     }, [sandpack.files, lastSavedFiles, componentName, exampleId]);
 
     const handleSave = useCallback(() => {
@@ -415,7 +444,6 @@ function InternalToolbar({
 
         // Reset local save status to saved after reset
         if (onLocalSaveStatusChange) {
-            console.log('[ComponentEditor] Reset clicked - marking as SAVED');
             onLocalSaveStatusChange('saved');
         }
 
@@ -447,11 +475,17 @@ function InternalToolbar({
 
     // Track previous files to detect actual changes
     const prevFilesRef = useRef<string>("");
+    const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     
     // Notify parent of code changes and auto-save to localStorage (debounced)
     // Only save if files actually changed to avoid unnecessary localStorage writes
     useEffect(() => {
-        const timer = setTimeout(() => {
+        // Clear any pending save
+        if (saveTimeoutRef.current) {
+            clearTimeout(saveTimeoutRef.current);
+        }
+        
+        saveTimeoutRef.current = setTimeout(() => {
             // Normalize files to ensure they have a code property
             const normalizedFiles: Record<string, { code: string }> = {};
             for (const [path, file] of Object.entries(sandpack.files)) {
@@ -471,7 +505,6 @@ function InternalToolbar({
             
             // Mark as unsaved when files change
             if (onLocalSaveStatusChange) {
-                console.log('[ComponentEditor] Files changed - marking as UNSAVED');
                 onLocalSaveStatusChange('unsaved');
             }
             
@@ -486,14 +519,18 @@ function InternalToolbar({
             // Auto-save to localStorage only when files actually changed
             // This ensures user edits persist even without explicit save
             // but avoids unnecessary writes when nothing changed
-            // Show toast for auto-saves so user knows changes are being saved
-            if (onLastSavedUpdate) {
-                onLastSavedUpdate(normalizedFiles, true);
+            // Only show toast for auto-saves if we're not already in a save operation
+            if (onLastSavedUpdate && saveStatusRef.current !== 'saving') {
+                onLastSavedUpdate(normalizedFiles, false); // Don't show toast for auto-saves
             }
-        }, 1000);
+        }, 1500); // Increased debounce to 1.5s to reduce save frequency
 
-        return () => clearTimeout(timer);
-    }, [sandpack.files, onCodeChange, onLastSavedUpdate]);
+        return () => {
+            if (saveTimeoutRef.current) {
+                clearTimeout(saveTimeoutRef.current);
+            }
+        };
+    }, [sandpack.files, onCodeChange, onLastSavedUpdate, onLocalSaveStatusChange]);
 
     // Listen for global events that should trigger a cache snapshot, such as
     // light/dark theme toggles or component switches initiated elsewhere
@@ -733,8 +770,10 @@ export default function ComponentEditor({
 
     // Track last saved files state for this component instance.
     // We seed it from localStorage so edits persist across page reloads and navigation.
+    // Use lazy initializer to load from cache only once on mount
     const [lastSavedFiles, setLastSavedFiles] = useState<Record<string, { code: string }> | undefined>(() => {
         // Load from localStorage on mount (client-side only)
+        // This runs only once during initialization
         if (typeof window !== "undefined") {
             return getComponentCache(componentName, exampleId);
         }
@@ -742,10 +781,13 @@ export default function ComponentEditor({
     });
 
     // Track local save status (saved/unsaved) for badge display
+    // Use lazy initializer to check cache only once
     const [localSaveStatus, setLocalSaveStatus] = useState<'saved' | 'unsaved'>(() => {
         // If we have cached files, assume they're saved
-        if (typeof window !== "undefined" && getComponentCache(componentName, exampleId)) {
-            return 'saved';
+        // Check the same cache that was loaded above to avoid duplicate reads
+        if (typeof window !== "undefined") {
+            const cached = getComponentCache(componentName, exampleId);
+            return cached ? 'saved' : 'saved';
         }
         return 'saved'; // Default to saved on initial load
     });
@@ -812,6 +854,67 @@ export default function ComponentEditor({
     // This allows React to potentially reuse the instance when navigating back
     const providerKey = useMemo(() => `sandpack-${instanceKey}`, [instanceKey]);
 
+    // Suppress non-critical Sandpack service worker errors
+    // These errors occur when Sandpack tries to use its cloud bundler but can't communicate
+    // They're non-critical because Sandpack falls back to local bundling
+    useEffect(() => {
+        const handleError = (event: ErrorEvent) => {
+            const errorMessage = event.message || '';
+            const errorSource = event.filename || '';
+            
+            // Suppress Sandpack service worker BroadcastChannel timeout errors
+            if (
+                errorMessage.includes('BroadcastChannel') &&
+                errorMessage.includes('timeout') &&
+                (errorSource.includes('__csb_sw') || errorSource.includes('sandpack'))
+            ) {
+                event.preventDefault();
+                return false;
+            }
+            
+            // Suppress Sandpack bundler POST request failures
+            if (
+                errorMessage.includes('Failed to handle POST') &&
+                errorMessage.includes('codesandbox.io')
+            ) {
+                event.preventDefault();
+                return false;
+            }
+        };
+
+        const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+            const reason = event.reason;
+            const errorMessage = typeof reason === 'string' 
+                ? reason 
+                : reason?.message || '';
+            
+            // Suppress Sandpack service worker promise rejections
+            if (
+                errorMessage.includes('BroadcastChannel') &&
+                errorMessage.includes('timeout')
+            ) {
+                event.preventDefault();
+                return false;
+            }
+            
+            if (
+                errorMessage.includes('Failed to handle POST') &&
+                errorMessage.includes('codesandbox.io')
+            ) {
+                event.preventDefault();
+                return false;
+            }
+        };
+
+        window.addEventListener('error', handleError);
+        window.addEventListener('unhandledrejection', handleUnhandledRejection);
+
+        return () => {
+            window.removeEventListener('error', handleError);
+            window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+        };
+    }, []);
+
     return (
         <div className="w-full flex flex-col">
             <SandpackProvider
@@ -842,7 +945,6 @@ export default function ComponentEditor({
                             // Also store them in localStorage for persistence
                             setComponentCache(componentName, files, exampleId);
                             // Mark as saved after successful save
-                            console.log('[ComponentEditor] Files saved to localStorage - marking as SAVED');
                             setLocalSaveStatus('saved');
                         }}
                         globalCss={effectiveCss}
