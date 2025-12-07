@@ -1029,7 +1029,7 @@ export default function ComponentEditor({
                 )}
 
                 {/* Editor and Preview using SandpackLayout for proper live updates */}
-                <SandpackLayout style={{ height: "500px", display: "flex", overflow: "hidden" }}>
+                <SandpackLayout style={{ height: "calc(100vh - 200px)", minHeight: "600px", display: "flex", overflow: "hidden" }}>
                     {/* Editor Panel */}
                     <div
                         className={readOnly ? "readonly-editor-container" : "editor-container"}
@@ -1064,11 +1064,11 @@ export default function ComponentEditor({
                     </div>
 
                     {/* Preview Panel with styling */}
-                    <div className="flex-1 p-4 bg-muted/30 flex items-center justify-center" style={{ minWidth: 0, minHeight: 0, overflow: "hidden" }}>
+                    <div className="flex-1 p-4 bg-muted/30 flex items-center justify-center" style={{ minWidth: 0, minHeight: 0, overflow: "auto" }}>
                         <div className="h-full w-full bg-background rounded-lg overflow-auto shadow-sm border border-border/50">
                             <SandpackPreview
                                 style={{ height: "100%", width: "100%" }}
-                                showOpenInCodeSandbox={true}
+                                showOpenInCodeSandbox={false}
                                 showRefreshButton
                             />
                         </div>
