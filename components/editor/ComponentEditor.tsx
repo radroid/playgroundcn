@@ -13,9 +13,19 @@ import { Copy, Check } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { SaveStatus } from "./SaveStatusIndicator";
 import { EditorToolbar } from "./EditorToolbar";
-import { DEFAULT_GLOBAL_CSS, getThemeCss } from "./theme-generator";
-import { getAppCode, UTILS_CODE, TSCONFIG_CODE, USE_MOBILE_CODE } from "@/lib/sandpack/sandpack-app-template";
-import { getComponentCache, setComponentCache } from "./cache";
+import {
+    getIndexHtml,
+    getMainTsx,
+    getAppTsx,
+    getIndexCss,
+    getViteConfig,
+    UTILS_CODE,
+    TSCONFIG_CODE,
+    USE_MOBILE_CODE,
+} from "@/lib/sandpack/vite-react-template";
+import { getComponentCache, setComponentCache, clearComponentCache } from "./storage";
+import { useGlobalCss } from "@/lib/context/global-css-context";
+import { toast } from "sonner";
 
 // =============================================================================
 // Types
@@ -26,8 +36,6 @@ export interface ComponentEditorProps {
     code: string;
     /** The preview/demo code that uses the component */
     previewCode: string;
-    /** Optional global CSS styles */
-    globalCss?: string;
     /** Whether the editor is read-only */
     readOnly?: boolean;
     /** Callback when user saves */
@@ -40,16 +48,14 @@ export interface ComponentEditorProps {
     registryDependenciesCode?: Record<string, { code: string; dependencies?: Record<string, string> }>;
     /** Component name (used for file path) */
     componentName: string;
+    /** Example ID for this instance (used for instance management) */
+    exampleId?: string;
     /** Current save status */
     saveStatus?: SaveStatus;
     /** Display name shown in toolbar */
     componentDisplayName?: string;
     /** Description shown in toolbar */
     componentDescription?: string;
-    /** Controlled theme value (if provided, theme is controlled externally) */
-    currentTheme?: string;
-    /** Callback when theme changes (required if currentTheme is provided) */
-    onThemeChange?: (theme: string) => void;
 }
 
 // =============================================================================
@@ -57,18 +63,13 @@ export interface ComponentEditorProps {
 // =============================================================================
 
 const EXTERNAL_RESOURCES = [
-    "https://cdn.tailwindcss.com?plugins=forms,typography",
     // Google Fonts used by tweakcn themes
     "https://fonts.googleapis.com/css2?family=Inter:wght@100..900&family=JetBrains+Mono:wght@100..800&family=Source+Serif+4:wght@200..900&family=Geist+Mono:wght@100..900&family=Bricolage+Grotesque:wght@200..800&family=Playfair+Display:wght@400..900&family=DM+Serif+Display&family=IBM+Plex+Mono:wght@100..700&family=Fira+Code:wght@300..700&family=Space+Grotesk:wght@300..700&family=Source+Code+Pro:wght@200..900&family=Outfit:wght@100..900&family=Poppins:wght@100..900&family=DM+Sans:wght@100..900&family=Lora:wght@400..700&family=Merriweather:wght@300..900&family=Rubik:wght@300..900&family=Space+Mono:wght@400;700&family=Archivo:wght@100..900&family=Inconsolata:wght@200..900&family=Montserrat:wght@100..900&family=Lato:wght@100..900&family=Nunito:wght@200..900&family=Quicksand:wght@300..700&family=Raleway:wght@100..900&family=Work+Sans:wght@100..900&family=Karla:wght@200..800&family=Press+Start+2P&family=Pixelify+Sans:wght@400..700&family=VT323&family=Courier+Prime:wght@400;700&display=swap",
 ];
 
 const DEFAULT_DEPENDENCIES = {
-    "lucide-react": "latest",
-    clsx: "latest",
     "tailwind-merge": "latest",
-    "@types/react": "^18.2.0",
-    "@types/react-dom": "^18.2.0",
-    "@types/node": "^20.0.0",
+    "tw-animate-css": "^1.4.0",
 };
 
 // =============================================================================
@@ -116,24 +117,30 @@ function CopyCodeButton() {
 }
 
 // =============================================================================
-// CSS Updater Component (updates globals.css when CSS theme changes)
+// CSS Updater Component (updates index.html when CSS theme changes)
 // =============================================================================
 
 function CssUpdater({
     effectiveCss,
+    isDark,
 }: {
     effectiveCss: string;
+    isDark: boolean;
 }) {
     const { sandpack } = useSandpack();
     const prevCssRef = useRef(effectiveCss);
+    const prevIsDarkRef = useRef(isDark);
 
-    // Update globals.css when CSS changes (for style theme changes)
+    // Update index.html when CSS changes (for style theme changes)
+    // For Vite, we update /index.html with inline theme CSS
     useEffect(() => {
-        if (prevCssRef.current !== effectiveCss) {
-            sandpack.updateFile("/styles/globals.css", effectiveCss);
+        if (prevCssRef.current !== effectiveCss || prevIsDarkRef.current !== isDark) {
+            const newIndexHtml = getIndexHtml(effectiveCss, isDark);
+            sandpack.updateFile("/index.html", newIndexHtml);
             prevCssRef.current = effectiveCss;
+            prevIsDarkRef.current = isDark;
         }
-    }, [effectiveCss, sandpack]);
+    }, [effectiveCss, isDark, sandpack]);
 
     return null;
 }
@@ -156,7 +163,7 @@ function RegistryTabMarker({
         if (!registryDependenciesCode) return;
 
         const registryPaths = Object.keys(registryDependenciesCode).map(
-            name => `/components/ui/${name}.tsx`
+            name => `/src/components/ui/${name}.tsx`
         );
 
         const markTabs = () => {
@@ -227,25 +234,28 @@ function RegistryTabMarker({
 // Internal Toolbar Component (lives inside SandpackProvider)
 // =============================================================================
 
+type LocalSaveStatus = 'saved' | 'unsaved';
+
 interface InternalToolbarProps {
     readOnly?: boolean;
     saveStatus: SaveStatus;
-    currentTheme: string;
-    onThemeChange: (theme: string) => void;
     onSave?: (files: Record<string, { code: string }>) => void;
     onCodeChange?: (files: Record<string, { code: string }>) => void;
     componentDisplayName?: string;
     componentDescription?: string;
     lastSavedFiles?: Record<string, { code: string }>;
-    onLastSavedUpdate?: (files: Record<string, { code: string }>) => void;
+    onLastSavedUpdate?: (files: Record<string, { code: string }>, showToast?: boolean) => void;
     globalCss?: string;
+    componentName?: string;
+    exampleId?: string;
+    initialFiles?: Record<string, { code: string }>;
+    localSaveStatus?: LocalSaveStatus;
+    onLocalSaveStatusChange?: (status: LocalSaveStatus) => void;
 }
 
 function InternalToolbar({
     readOnly,
     saveStatus,
-    currentTheme,
-    onThemeChange,
     onSave,
     onCodeChange,
     componentDisplayName,
@@ -253,15 +263,26 @@ function InternalToolbar({
     lastSavedFiles,
     onLastSavedUpdate,
     globalCss: propGlobalCss,
+    componentName,
+    exampleId = "default",
+    initialFiles,
+    localSaveStatus = 'saved',
+    onLocalSaveStatusChange,
 }: InternalToolbarProps) {
     const { sandpack } = useSandpack();
 
     // Get globalCss from sandpack files if not provided as prop
+    // For Vite, CSS is embedded in index.html
     const globalCss = useMemo(() => {
         if (propGlobalCss) return propGlobalCss;
-        const cssFile = sandpack.files["/styles/globals.css"];
-        if (cssFile) {
-            return typeof cssFile === "string" ? cssFile : cssFile.code;
+        const htmlFile = sandpack.files["/index.html"];
+        if (htmlFile) {
+            const html = typeof htmlFile === "string" ? htmlFile : htmlFile.code;
+            // Extract CSS from <style type="text/tailwindcss"> block
+            const match = html.match(/<style type="text\/tailwindcss">\s*([\s\S]*?)\s*<\/style>/);
+            if (match && match[1]) {
+                return match[1].trim();
+            }
         }
         return undefined;
     }, [propGlobalCss, sandpack.files]);
@@ -272,22 +293,50 @@ function InternalToolbar({
         saveStatusRef.current = saveStatus;
     }, [saveStatus]);
 
-    // Update last saved files when save is successful
+    // Update last saved files when save is successful (manual saves only)
+    // This effect only runs when saveStatus changes to 'saved', not on every file change
+    const prevSaveStatusRef = useRef(saveStatus);
     useEffect(() => {
-        if (saveStatus === 'saved' && onLastSavedUpdate) {
+        // Only trigger on transition from non-saved to saved (manual save)
+        if (saveStatus === 'saved' && prevSaveStatusRef.current !== 'saved' && onLastSavedUpdate) {
             // Create a snapshot of current files as the last saved state
             const savedFiles: Record<string, { code: string }> = {};
             for (const [path, file] of Object.entries(sandpack.files)) {
                 const fileCode = typeof file === 'string' ? file : file.code;
                 savedFiles[path] = { code: fileCode };
             }
-            onLastSavedUpdate(savedFiles);
+            
+            // Only update if files actually changed
+            const savedFilesSerialized = JSON.stringify(savedFiles);
+            const lastSavedSerialized = lastSavedFiles ? JSON.stringify(lastSavedFiles) : "";
+            
+            if (savedFilesSerialized !== lastSavedSerialized) {
+                // Manual save - show toast
+                onLastSavedUpdate(savedFiles, true);
+            }
         }
-    }, [saveStatus, sandpack.files, onLastSavedUpdate]);
+        prevSaveStatusRef.current = saveStatus;
+    }, [saveStatus, sandpack.files, onLastSavedUpdate, lastSavedFiles]);
 
-    // Track if there are unsaved changes
+    // Track if there are unsaved changes or cached data in localStorage
+    // Use a ref to cache the comparison result and only recalculate when dependencies change
+    const hasChangesRef = useRef(false);
+    const lastFilesHashRef = useRef<string>("");
+    const lastSavedHashRef = useRef<string>("");
+    
     const hasChanges = useMemo(() => {
-        if (!lastSavedFiles) return false;
+        // Check if there's cached data in localStorage (even if current files match)
+        // This allows reset button to be enabled when there's data to reset
+        // Only check localStorage if we don't have lastSavedFiles (which means cache exists)
+        const hasCachedData = !lastSavedFiles && typeof window !== "undefined" && componentName &&
+            getComponentCache(componentName, exampleId) !== undefined;
+        
+        if (!lastSavedFiles) {
+            // If we have cached data but no lastSavedFiles loaded yet, enable reset
+            const result = !!hasCachedData;
+            hasChangesRef.current = result;
+            return result;
+        }
 
         const currentFiles = sandpack.files;
         const savedFiles = lastSavedFiles;
@@ -297,22 +346,42 @@ function InternalToolbar({
             return typeof file === 'string' ? file : file.code;
         };
 
-        // Only compare files we actually track in lastSavedFiles.
-        // Ignore any additional internal files Sandpack may create.
-        for (const [path, savedFile] of Object.entries(savedFiles)) {
-            const currentFile = currentFiles[path];
-            if (!currentFile) continue;
-
-            const currentCode = getFileCode(currentFile);
-            const savedCode = getFileCode(savedFile);
-
-            if (currentCode !== savedCode) {
-                return true;
-            }
+        // Create simple hash of current files (only user-editable files)
+        const currentHash = Object.entries(savedFiles)
+            .map(([path]) => {
+                const currentFile = currentFiles[path];
+                if (!currentFile) return '';
+                return `${path}:${getFileCode(currentFile)}`;
+            })
+            .sort()
+            .join('|');
+        
+        // Create hash of saved files
+        const savedHash = Object.entries(savedFiles)
+            .map(([path, file]) => `${path}:${getFileCode(file)}`)
+            .sort()
+            .join('|');
+        
+        // Only recalculate if hashes changed
+        const filesChanged = currentHash !== lastFilesHashRef.current;
+        const savedChanged = savedHash !== lastSavedHashRef.current;
+        
+        if (filesChanged) {
+            lastFilesHashRef.current = currentHash;
         }
-
-        return false;
-    }, [sandpack.files, lastSavedFiles]);
+        if (savedChanged) {
+            lastSavedHashRef.current = savedHash;
+        }
+        
+        // Compare hashes to detect changes
+        const hasFileChanges = currentHash !== savedHash;
+        const result = hasFileChanges || !!hasCachedData;
+        
+        // Update ref
+        hasChangesRef.current = result;
+        
+        return result;
+    }, [sandpack.files, lastSavedFiles, componentName, exampleId]);
 
     const handleSave = useCallback(() => {
         if (onSave) {
@@ -335,7 +404,8 @@ function InternalToolbar({
         }
 
         if (onLastSavedUpdate) {
-            onLastSavedUpdate(savedFiles);
+            // Snapshot for theme/component changes - no toast needed
+            onLastSavedUpdate(savedFiles, false);
         }
 
         // Re-apply saved files to Sandpack to ensure they are in sync
@@ -344,29 +414,44 @@ function InternalToolbar({
         }
     }, [onLastSavedUpdate, sandpack.files, sandpack.updateFile]);
 
-    // When the style theme changes, snapshot the current files into our
-    // in-memory "browser cache" (lastSavedFiles), then delegate to the parent
-    // onThemeChange handler.
-    const handleThemeChangeWithSave = useCallback(
-        (newTheme: string) => {
-            snapshotCurrentFilesToCache();
-            onThemeChange(newTheme);
-        },
-        [snapshotCurrentFilesToCache, onThemeChange]
-    );
-
     const handleReset = useCallback(() => {
-        if (!lastSavedFiles) {
-            // Fallback to resetting to initial if no saved state
-            sandpack.resetFile(sandpack.activeFile);
-            return;
+        // Clear localStorage cache for this component instance
+        if (componentName) {
+            clearComponentCache(componentName, exampleId);
         }
 
-        // Reset all files to last saved state
-        for (const [path, file] of Object.entries(lastSavedFiles)) {
-            sandpack.updateFile(path, file.code);
+        // Reset to initial files if provided, otherwise reset active file
+        if (initialFiles && Object.keys(initialFiles).length > 0) {
+            // Reset all files to initial state
+            for (const [path, file] of Object.entries(initialFiles)) {
+                sandpack.updateFile(path, file.code);
+            }
+        } else if (lastSavedFiles) {
+            // Fallback to last saved state
+            for (const [path, file] of Object.entries(lastSavedFiles)) {
+                sandpack.updateFile(path, file.code);
+            }
+        } else {
+            // Final fallback: reset active file
+            sandpack.resetFile(sandpack.activeFile);
         }
-    }, [sandpack, lastSavedFiles]);
+
+        // Notify parent to clear the cache
+        if (onLastSavedUpdate && initialFiles) {
+            // Reset - no toast needed here, toast is shown above
+            onLastSavedUpdate(initialFiles, false);
+        }
+
+        // Reset local save status to saved after reset
+        if (onLocalSaveStatusChange) {
+            onLocalSaveStatusChange('saved');
+        }
+
+        // Show toast notification
+        toast.info("Reset to initial state", {
+            description: "All changes have been cleared and files reset to initial state.",
+        });
+    }, [sandpack, lastSavedFiles, initialFiles, componentName, exampleId, onLastSavedUpdate]);
 
     // Auto-save every 30 seconds when there are unsaved changes
     useEffect(() => {
@@ -388,23 +473,64 @@ function InternalToolbar({
         };
     }, [hasChanges, handleSave, onSave]);
 
-    // Notify parent of code changes (debounced)
+    // Track previous files to detect actual changes
+    const prevFilesRef = useRef<string>("");
+    const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    
+    // Notify parent of code changes and auto-save to localStorage (debounced)
+    // Only save if files actually changed to avoid unnecessary localStorage writes
     useEffect(() => {
-        const timer = setTimeout(() => {
+        // Clear any pending save
+        if (saveTimeoutRef.current) {
+            clearTimeout(saveTimeoutRef.current);
+        }
+        
+        saveTimeoutRef.current = setTimeout(() => {
+            // Normalize files to ensure they have a code property
+            const normalizedFiles: Record<string, { code: string }> = {};
+            for (const [path, file] of Object.entries(sandpack.files)) {
+                normalizedFiles[path] = {
+                    code: typeof file === 'string' ? file : file.code
+                };
+            }
+            
+            // Serialize files to compare with previous state
+            const filesSerialized = JSON.stringify(normalizedFiles);
+            const hasChanged = filesSerialized !== prevFilesRef.current;
+            
+            if (!hasChanged) {
+                // No changes, skip saving
+                return;
+            }
+            
+            // Mark as unsaved when files change
+            if (onLocalSaveStatusChange) {
+                onLocalSaveStatusChange('unsaved');
+            }
+            
+            // Update ref with new state
+            prevFilesRef.current = filesSerialized;
+            
+            // Notify parent if callback provided
             if (onCodeChange) {
-                // Normalize files to ensure they have a code property
-                const normalizedFiles: Record<string, { code: string }> = {};
-                for (const [path, file] of Object.entries(sandpack.files)) {
-                    normalizedFiles[path] = {
-                        code: typeof file === 'string' ? file : file.code
-                    };
-                }
                 onCodeChange(normalizedFiles);
             }
-        }, 1000);
+            
+            // Auto-save to localStorage only when files actually changed
+            // This ensures user edits persist even without explicit save
+            // but avoids unnecessary writes when nothing changed
+            // Only show toast for auto-saves if we're not already in a save operation
+            if (onLastSavedUpdate && saveStatusRef.current !== 'saving') {
+                onLastSavedUpdate(normalizedFiles, false); // Don't show toast for auto-saves
+            }
+        }, 1500); // Increased debounce to 1.5s to reduce save frequency
 
-        return () => clearTimeout(timer);
-    }, [sandpack.files, onCodeChange]);
+        return () => {
+            if (saveTimeoutRef.current) {
+                clearTimeout(saveTimeoutRef.current);
+            }
+        };
+    }, [sandpack.files, onCodeChange, onLastSavedUpdate, onLocalSaveStatusChange]);
 
     // Listen for global events that should trigger a cache snapshot, such as
     // light/dark theme toggles or component switches initiated elsewhere
@@ -423,41 +549,24 @@ function InternalToolbar({
         };
     }, [snapshotCurrentFilesToCache]);
 
-    return (
-        <EditorToolbar
-            componentDisplayName={componentDisplayName}
-            componentDescription={componentDescription}
-            currentTheme={currentTheme}
-            onThemeChange={handleThemeChangeWithSave}
-            saveStatus={saveStatus}
-            readOnly={readOnly}
-            onReset={handleReset}
-            onSave={handleSave}
-            hasChanges={hasChanges}
-            globalCss={globalCss}
-        />
-    );
+        return (
+            <EditorToolbar
+                componentDisplayName={componentDisplayName}
+                componentDescription={componentDescription}
+                saveStatus={saveStatus}
+                readOnly={readOnly}
+                onReset={handleReset}
+                onSave={handleSave}
+                hasChanges={hasChanges}
+                globalCss={globalCss}
+                localSaveStatus={localSaveStatus}
+            />
+        );
 }
 
 // =============================================================================
 // Hooks
 // =============================================================================
-
-function useEffectiveCss(
-    globalCss: string | undefined,
-    isThemeManuallySelected: boolean,
-    generatedCss: string
-) {
-    return useMemo(() => {
-        if (isThemeManuallySelected) {
-            return generatedCss;
-        }
-        if (globalCss && globalCss.trim().length > 0) {
-            return globalCss;
-        }
-        return generatedCss;
-    }, [globalCss, isThemeManuallySelected, generatedCss]);
-}
 
 function useSandpackFiles(
     componentPath: string,
@@ -466,7 +575,8 @@ function useSandpackFiles(
     effectiveCss: string,
     isDark: boolean,
     registryDependenciesCode?: Record<string, { code: string; dependencies?: Record<string, string> }>,
-    savedFiles?: Record<string, { code: string }>
+    savedFiles?: Record<string, { code: string }>,
+    dependencies?: Record<string, string>
 ) {
     const registryFiles = useMemo(() => {
         if (!registryDependenciesCode) return {};
@@ -474,7 +584,7 @@ function useSandpackFiles(
         const files = Object.entries(registryDependenciesCode).reduce(
             (acc, [name, data]) => ({
                 ...acc,
-                [`/components/ui/${name}.tsx`]: {
+                [`/src/components/ui/${name}.tsx`]: {
                     code: data.code,
                     hidden: false,
                 },
@@ -489,7 +599,7 @@ function useSandpackFiles(
         () => {
             // Prefer any cached/saved versions of user-editable files.
             const resolvedPreviewCode =
-                savedFiles?.["/Preview.tsx"]?.code ?? previewCode;
+                savedFiles?.["/src/App.tsx"]?.code ?? previewCode;
             const resolvedComponentCode =
                 savedFiles?.[componentPath]?.code ?? code;
 
@@ -510,27 +620,35 @@ function useSandpackFiles(
             );
 
             return {
-                "/App.tsx": getAppCode(isDark),
-                "/Preview.tsx": resolvedPreviewCode,
+                // Vite React files
+                "/index.html": getIndexHtml(effectiveCss, isDark),
+                "/src/main.tsx": getMainTsx(),
+                "/src/App.tsx": getAppTsx(resolvedPreviewCode),
+                "/src/index.css": getIndexCss(),
+                // Component and dependencies
                 [componentPath]: resolvedComponentCode,
-                "/lib/utils.ts": {
-                    code: UTILS_CODE,
+                ...resolvedRegistryFiles,
+                // Config files
+                "/vite.config.ts": {
+                    code: getViteConfig(),
                     hidden: true,
                 },
-                // Always use the currently generated/effective CSS for the active theme
-                "/styles/globals.css": effectiveCss,
                 "/tsconfig.json": {
                     code: TSCONFIG_CODE,
                     hidden: true,
                 },
-                "/hooks/use-mobile.ts": {
+                // Utility files
+                "/src/lib/utils.ts": {
+                    code: UTILS_CODE,
+                    hidden: true,
+                },
+                "/src/hooks/use-mobile.ts": {
                     code: USE_MOBILE_CODE,
                     hidden: true,
                 },
-                ...resolvedRegistryFiles,
             };
         },
-        [componentPath, isDark, effectiveCss, code, previewCode, registryFiles, savedFiles]
+        [componentPath, isDark, effectiveCss, code, previewCode, registryFiles, savedFiles, dependencies]
     );
 }
 
@@ -540,17 +658,16 @@ function useSandpackOptions(
 ) {
     const registryFilePaths = useMemo(() => {
         if (!registryDependenciesCode) return [];
-        return Object.keys(registryDependenciesCode).map(name => `/components/ui/${name}.tsx`);
+        return Object.keys(registryDependenciesCode).map(name => `/src/components/ui/${name}.tsx`);
     }, [registryDependenciesCode]);
 
     return useMemo(
         () => ({
             externalResources: EXTERNAL_RESOURCES,
-            activeFile: "/Preview.tsx",
+            activeFile: "/src/App.tsx",
             visibleFiles: [
-                "/Preview.tsx",
+                "/src/App.tsx",
                 componentPath,
-                "/styles/globals.css",
                 ...registryFilePaths,
             ],
             autoReload: true,
@@ -577,12 +694,28 @@ function useSandpackSetup(
             }, {} as Record<string, string>)
             : {};
 
+        // Base dependencies for Vite React TypeScript
+        const baseDependencies = {
+            "react": "^18.2.0",
+            "react-dom": "^18.2.0",
+            "@types/react": "^18.2.0",
+            "@types/react-dom": "^18.2.0",
+            "@vitejs/plugin-react": "^4.2.0",
+            "typescript": "^5.6.3",
+            "vite": "^5.0.0",
+            "clsx": "^2.1.1",
+            "lucide-react": "latest",
+        };
+
+        const allDependencies = {
+            ...baseDependencies,
+            ...DEFAULT_DEPENDENCIES,
+            ...registryNpmDeps,
+            ...(dependencies || {}),
+        };
+
         return {
-            dependencies: {
-                ...DEFAULT_DEPENDENCIES,
-                ...registryNpmDeps,
-                ...(dependencies || {}),
-            },
+            dependencies: allDependencies,
         };
     }, [serializedDeps, serializedRegistryDeps]);
 }
@@ -595,21 +728,23 @@ function useSandpackSetup(
 export default function ComponentEditor({
     code,
     previewCode,
-    globalCss,
     readOnly,
     onSave,
     onCodeChange,
     dependencies,
     registryDependenciesCode,
     componentName,
+    exampleId = "default",
     saveStatus = "idle",
     componentDisplayName,
     componentDescription,
-    currentTheme: controlledTheme,
-    onThemeChange: controlledOnThemeChange,
 }: ComponentEditorProps) {
     const { resolvedTheme } = useTheme();
-    const componentPath = `/components/ui/${componentName}.tsx`;
+    const { globalCss } = useGlobalCss();
+    const componentPath = `/src/components/ui/${componentName}.tsx`;
+    
+    // Create a stable instance key for the SandpackProvider
+    const instanceKey = `${componentName}-${exampleId}`;
     
     // Track dark mode from DOM since ThemeToggle uses direct DOM manipulation
     // This ensures we stay in sync with the actual dark mode state
@@ -633,40 +768,29 @@ export default function ComponentEditor({
         return () => observer.disconnect();
     }, []);
 
-    // Theme state - controlled or uncontrolled
-    const [internalTheme, setInternalTheme] = useState("default");
-    const [generatedCss, setGeneratedCss] = useState(DEFAULT_GLOBAL_CSS);
-    const [isThemeManuallySelected, setIsThemeManuallySelected] = useState(false);
-
-    // Use controlled theme if provided, otherwise use internal state
-    const currentTheme = controlledTheme ?? internalTheme;
-
-    // Track last saved files state for this component. We seed it from the
-    // global in-memory cache so edits survive navigation between components
-    // within a single session (but not full page reloads).
-    const [lastSavedFiles, setLastSavedFiles] = useState<Record<string, { code: string }> | undefined>(() =>
-        getComponentCache(componentName)
-    );
-
-    const handleThemeChange = useCallback((newTheme: string) => {
-        if (controlledOnThemeChange) {
-            // Controlled mode: notify parent
-            controlledOnThemeChange(newTheme);
-        } else {
-            // Uncontrolled mode: update internal state
-            setInternalTheme(newTheme);
+    // Track last saved files state for this component instance.
+    // We seed it from localStorage so edits persist across page reloads and navigation.
+    // Use lazy initializer to load from cache only once on mount
+    const [lastSavedFiles, setLastSavedFiles] = useState<Record<string, { code: string }> | undefined>(() => {
+        // Load from localStorage on mount (client-side only)
+        // This runs only once during initialization
+        if (typeof window !== "undefined") {
+            return getComponentCache(componentName, exampleId);
         }
-        setGeneratedCss(getThemeCss(newTheme));
-        setIsThemeManuallySelected(true);
-    }, [controlledOnThemeChange]);
+        return undefined;
+    });
 
-    // Sync generated CSS when controlled theme changes
-    useEffect(() => {
-        if (controlledTheme !== undefined) {
-            setGeneratedCss(getThemeCss(controlledTheme));
-            setIsThemeManuallySelected(true);
+    // Track local save status (saved/unsaved) for badge display
+    // Use lazy initializer to check cache only once
+    const [localSaveStatus, setLocalSaveStatus] = useState<'saved' | 'unsaved'>(() => {
+        // If we have cached files, assume they're saved
+        // Check the same cache that was loaded above to avoid duplicate reads
+        if (typeof window !== "undefined") {
+            const cached = getComponentCache(componentName, exampleId);
+            return cached ? 'saved' : 'saved';
         }
-    }, [controlledTheme]);
+        return 'saved'; // Default to saved on initial load
+    });
 
     // Computed values
     // Use DOM-based dark mode detection since ThemeToggle uses direct DOM manipulation
@@ -675,7 +799,9 @@ export default function ComponentEditor({
         // Prefer DOM-based detection as it's more reliable with current ThemeToggle implementation
         return isDarkFromDom || (resolvedTheme === "dark");
     }, [isDarkFromDom, resolvedTheme]);
-    const effectiveCss = useEffectiveCss(globalCss, isThemeManuallySelected, generatedCss);
+
+    // Use global CSS from context
+    const effectiveCss = globalCss;
 
     // Sandpack configuration - files should only update when source data changes.
     // Sandpack will handle live updates internally when user edits in the editor.
@@ -686,15 +812,11 @@ export default function ComponentEditor({
         effectiveCss,
         isDark,
         registryDependenciesCode,
-        lastSavedFiles
+        lastSavedFiles,
+        dependencies
     );
     const options = useSandpackOptions(componentPath, registryDependenciesCode);
     const customSetup = useSandpackSetup(dependencies, registryDependenciesCode);
-
-    // Use a ref to stabilize files - refs don't trigger re-renders, keeping Sandpack's internal state intact.
-    // This is critical: when the files prop changes, Sandpack can reset its internal state and overwrite user edits.
-    const stableFilesRef = useRef(files);
-    const lastSourceDataRef = useRef<string>("");
 
     // Create a hash of source data to detect meaningful changes to the "source of truth"
     // for files (initial code/preview/registry). Theme and style changes are handled
@@ -706,18 +828,9 @@ export default function ComponentEditor({
         return `${componentPath}|${code}|${previewCode}|${registryHash}`;
     }, [componentPath, code, previewCode, registryDependenciesCode]);
 
-    // Update ref when source data changes - this updates the files object without triggering re-render
-    // Sandpack will sync files via updateFile calls from InternalEditor when needed
-    useEffect(() => {
-        if (lastSourceDataRef.current !== sourceDataKey) {
-            lastSourceDataRef.current = sourceDataKey;
-            stableFilesRef.current = files;
-        }
-    }, [sourceDataKey, files]);
-
     // Initialize / re-baseline last saved files when the underlying source data
-    // changes, but only if we don't already have a cache for this component.
-    // Theme changes are handled separately so we don't overwrite the in-memory
+    // changes, but only if we don't already have a cache for this component instance.
+    // Theme changes are handled separately so we don't overwrite the localStorage
     // cache of the user's current edits.
     useEffect(() => {
         if (lastSavedFiles && Object.keys(lastSavedFiles).length > 0) {
@@ -730,52 +843,144 @@ export default function ComponentEditor({
                 savedFiles[path] = { code: typeof file === 'string' ? file : file.code };
             }
             setLastSavedFiles(savedFiles);
-            setComponentCache(componentName, savedFiles);
+            // Initial setup - no toast needed
+            setComponentCache(componentName, savedFiles, exampleId);
         }
-    }, [code, previewCode, registryDependenciesCode, currentTheme, componentName, files, lastSavedFiles]);
+    }, [code, previewCode, registryDependenciesCode, componentName, exampleId, files, lastSavedFiles]);
 
     // Note: lastSavedFiles is updated in InternalEditor when saveStatus becomes 'saved'
 
-    // Key for SandpackProvider - include isDark so Sandpack remounts with correct editor theme
-    // Note: Remounting will reset user edits, which is acceptable for theme changes
-    const registryHash = registryDependenciesCode
-        ? Object.keys(registryDependenciesCode).join(',')
-        : '';
-    const providerKey = `sandpack-${sourceDataKey}-${isDark ? "dark" : "light"}-${registryHash}`;
+    // Key for SandpackProvider - use stable key based on instance
+    // This allows React to potentially reuse the instance when navigating back
+    const providerKey = useMemo(() => `sandpack-${instanceKey}`, [instanceKey]);
+
+    // Suppress non-critical Sandpack service worker errors
+    // These errors occur when Sandpack tries to use its cloud bundler but can't communicate
+    // They're non-critical because Sandpack falls back to local bundling
+    useEffect(() => {
+        const handleError = (event: ErrorEvent) => {
+            const errorMessage = event.message || '';
+            const errorSource = event.filename || '';
+            
+            // Suppress Sandpack service worker BroadcastChannel timeout errors
+            if (
+                errorMessage.includes('BroadcastChannel') &&
+                errorMessage.includes('timeout') &&
+                (errorSource.includes('__csb_sw') || errorSource.includes('sandpack'))
+            ) {
+                event.preventDefault();
+                return false;
+            }
+            
+            // Suppress Sandpack bundler POST request failures
+            if (
+                errorMessage.includes('Failed to handle POST') &&
+                errorMessage.includes('codesandbox.io')
+            ) {
+                event.preventDefault();
+                return false;
+            }
+        };
+
+        const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+            const reason = event.reason;
+            const errorMessage = typeof reason === 'string' 
+                ? reason 
+                : reason?.message || '';
+            
+            // Suppress Sandpack service worker promise rejections
+            if (
+                errorMessage.includes('BroadcastChannel') &&
+                errorMessage.includes('timeout')
+            ) {
+                event.preventDefault();
+                return false;
+            }
+            
+            if (
+                errorMessage.includes('Failed to handle POST') &&
+                errorMessage.includes('codesandbox.io')
+            ) {
+                event.preventDefault();
+                return false;
+            }
+        };
+
+        window.addEventListener('error', handleError);
+        window.addEventListener('unhandledrejection', handleUnhandledRejection);
+
+        return () => {
+            window.removeEventListener('error', handleError);
+            window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+        };
+    }, []);
 
     return (
         <div className="w-full flex flex-col">
             <SandpackProvider
                 key={providerKey}
-                template="react-ts"
+                template="vite-react-ts"
                 theme={isDark ? "dark" : "light"}
                 files={files}
                 options={options}
                 customSetup={customSetup}
                 style={{ display: "flex", flexDirection: "column" }}
             >
-                {/* CSS Updater - updates globals.css when CSS theme changes (not dark mode) */}
-                <CssUpdater effectiveCss={effectiveCss} />
+                {/* CSS Updater - updates index.html when CSS theme changes */}
+                <CssUpdater effectiveCss={effectiveCss} isDark={isDark} />
 
                 {/* Toolbar - outside SandpackLayout but inside SandpackProvider */}
                 {!readOnly && (
                     <InternalToolbar
                         componentDisplayName={componentDisplayName}
                         componentDescription={componentDescription}
-                        currentTheme={currentTheme}
-                        onThemeChange={handleThemeChange}
                         saveStatus={saveStatus}
                         readOnly={readOnly}
                         onSave={onSave}
                         onCodeChange={onCodeChange}
                         lastSavedFiles={lastSavedFiles}
-                        onLastSavedUpdate={(files) => {
-                            // Keep the existing in-memory cache of file contents
+                        onLastSavedUpdate={(files, showToast = false) => {
+                            // Keep the existing state of file contents
                             setLastSavedFiles(files);
-                            // Also store them in the global in-memory cache
-                            setComponentCache(componentName, files);
+                            // Also store them in localStorage for persistence
+                            setComponentCache(componentName, files, exampleId);
+                            // Mark as saved after successful save
+                            setLocalSaveStatus('saved');
                         }}
                         globalCss={effectiveCss}
+                        componentName={componentName}
+                        exampleId={exampleId}
+                        localSaveStatus={localSaveStatus}
+                        onLocalSaveStatusChange={setLocalSaveStatus}
+                        initialFiles={useMemo(() => {
+                            // Create initial files snapshot from the original source files (not cached)
+                            // This is used for reset functionality - restore to original state
+                            const initial: Record<string, { code: string }> = {};
+                            
+                            // Registry files
+                            const registryFiles: Record<string, { code: string }> = {};
+                            if (registryDependenciesCode) {
+                                for (const [name, data] of Object.entries(registryDependenciesCode)) {
+                                    registryFiles[`/src/components/ui/${name}.tsx`] = { code: data.code };
+                                }
+                            }
+                            
+                            // Build complete initial file set from original source
+                            initial["/index.html"] = { code: getIndexHtml(effectiveCss, isDark) };
+                            initial["/src/main.tsx"] = { code: getMainTsx() };
+                            initial["/src/App.tsx"] = { code: getAppTsx(previewCode) };
+                            initial["/src/index.css"] = { code: getIndexCss() };
+                            initial[componentPath] = { code: code };
+                            initial["/vite.config.ts"] = { code: getViteConfig() };
+                            initial["/tsconfig.json"] = { code: TSCONFIG_CODE };
+                            initial["/src/lib/utils.ts"] = { code: UTILS_CODE };
+                            initial["/src/hooks/use-mobile.ts"] = { code: USE_MOBILE_CODE };
+                            
+                            // Add registry files
+                            Object.assign(initial, registryFiles);
+                            
+                            return initial;
+                        }, [componentPath, code, previewCode, effectiveCss, isDark, registryDependenciesCode])}
                     />
                 )}
 
@@ -816,7 +1021,7 @@ export default function ComponentEditor({
 
                     {/* Preview Panel with styling */}
                     <div className="flex-1 p-4 bg-muted/30 flex items-center justify-center" style={{ minWidth: 0, minHeight: 0, overflow: "hidden" }}>
-                        <div className="h-full w-full bg-background rounded-lg overflow-hidden shadow-sm border border-border/50">
+                        <div className="h-full w-full bg-background rounded-lg overflow-auto shadow-sm border border-border/50">
                             <SandpackPreview
                                 style={{ height: "100%", width: "100%" }}
                                 showOpenInCodeSandbox={true}

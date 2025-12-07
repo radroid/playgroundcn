@@ -54,6 +54,7 @@ export function ComponentExamplesClient({
               code={componentCode || ""}
               previewCode={example.code}
               componentName={entry.id}
+              exampleId={example.id}
               componentDisplayName={entry.displayName}
               componentDescription={entry.description}
               dependencies={entry.dependencies}

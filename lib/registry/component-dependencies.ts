@@ -4,11 +4,6 @@
  */
 
 export const BASE_DEPENDENCIES = {
-  react: "19.2.0",
-  "react-dom": "19.2.0",
-  "next": "^16.0.6",
-  "cmdk": "^1.1.1",
-  "@radix-ui/react-slot": "^1.0.0",
 };
 
 // Map of component IDs to their specific dependencies (excluding base deps)
@@ -36,6 +31,7 @@ export const COMPONENT_SPECIFIC_DEPS: Record<string, Record<string, string>> = {
   },
   breadcrumb: {
     "lucide-react": "^0.555.0",
+    "@radix-ui/react-slot": "^1.0.0",
   },
   button: {
     "@radix-ui/react-slot": "^1.0.0",
@@ -209,6 +205,7 @@ export const COMPONENT_REGISTRY_DEPS: Record<string, string[]> = {
   calendar: ["button"], // imports Button, buttonVariants
   card: ["button", "input", "label"], // preview uses: button, input, label
   carousel: ["button", "card"], // imports Button; preview uses: card
+  chart: ["button", "card"], // imports Button; preview uses: card
   checkbox: ["label"], // preview uses: label
   collapsible: ["button"], // preview uses: button
   combobox: ["button", "command", "popover", "dialog"], // imports all four

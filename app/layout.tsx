@@ -4,11 +4,13 @@ import "./globals.css";
 import { Sidebar } from "../components/Sidebar";
 import { GlobalSearch } from "../components/GlobalSearch";
 import { HeaderActions } from "../components/HeaderActions";
+import { Providers } from "../components/Providers";
 import {
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
 } from "../components/ui/sidebar";
+import { Toaster } from "../components/ui/sonner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -35,23 +37,26 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <SidebarProvider>
-          <Sidebar />
-          <div className="fixed right-4 top-4 z-40">
-            <HeaderActions />
-          </div>
-          <SidebarInset>
-            <div className="mx-auto flex w-full max-w-6xl flex-col px-4 py-4">
-              <div className="mb-4 flex items-center gap-6">
-                <SidebarTrigger />
-                <div className="w-full max-w-xs">
-                  <GlobalSearch />
-                </div>
-              </div>
-              {children}
+        <Providers>
+          <SidebarProvider>
+            <Sidebar />
+            <div className="fixed right-4 top-4 z-40">
+              <HeaderActions />
             </div>
-          </SidebarInset>
-        </SidebarProvider>
+            <SidebarInset>
+              <div className="mx-auto flex w-full max-w-6xl flex-col px-4 py-4">
+                <div className="mb-4 flex items-center gap-6">
+                  <SidebarTrigger />
+                  <div className="w-full max-w-xs">
+                    <GlobalSearch />
+                  </div>
+                </div>
+                {children}
+              </div>
+            </SidebarInset>
+          </SidebarProvider>
+        </Providers>
+        <Toaster />
       </body>
     </html>
   );
