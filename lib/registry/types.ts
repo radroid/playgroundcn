@@ -1,4 +1,4 @@
-export type SandpackTemplate = "react-ts";
+export type SandpackTemplate = "vite-react-ts";
 
 export type ComponentExample = {
   id: string;
@@ -19,7 +19,7 @@ export type ComponentEntry = {
   /** Short description shown in lists and headers. */
   description: string;
 
-  /** Sandpack template – currently always "react-ts". */
+  /** Sandpack template – currently always "vite-react-ts". */
   sandpackTemplate: SandpackTemplate;
 
   /**

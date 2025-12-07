@@ -11,6 +11,11 @@ import {
   ComponentsList,
   GlobalCssPanel,
 } from "../components/layout";
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+} from "../components/ui/sidebar";
+import { Toaster } from "../components/ui/sonner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -63,6 +68,7 @@ export default function RootLayout({
             </div>
           </AppLayout>
         </Providers>
+        <Toaster />
       </body>
     </html>
   );

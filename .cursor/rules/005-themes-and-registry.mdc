@@ -15,7 +15,6 @@ alwaysApply: true
   - Reads theme data from `registry.json`
   - Generates CSS variables for `:root` (light) and `.dark` (dark)
   - Formats color values properly (handles HSL, hex, function-wrapped values)
-  - Returns a precompiled global CSS string with no `@tailwind` directives.
 - Theme detection: `detectThemeFromCss(css: string)` can identify which preset theme matches a given CSS string.
 - Default theme: `"default"` (fallback if theme not found).
 
@@ -26,7 +25,7 @@ alwaysApply: true
   - `displayName: string` — human-readable name
   - `category: string` — grouping (e.g., "ui", "forms")
   - `description: string` — short description
-  - `sandpackTemplate: SandpackTemplate` — usually `"react-ts"`
+  - `sandpackTemplate: SandpackTemplate` — should be `"vite-react-ts"`
   - `dependencies: Record<string, string>` — NPM dependencies
   - `registryDependencies?: string[]` — list of Shadcn component ids this depends on
   - `files?: { path: string; type: string }[]` — files installed by Shadcn registry
@@ -53,5 +52,4 @@ alwaysApply: true
   1. Controlled prop (`currentTheme` / `onThemeChange`)
   2. Context (`ComponentThemeProvider`)
   3. Internal state (uncontrolled mode)
-- Theme changes update the generated CSS via `getThemeCss()` and sync to Sandpack's `/styles/globals.css`.
-
+- Theme changes update the generated CSS via `getThemeCss()` and sync to Sandpack's `/index.html` inline style block.

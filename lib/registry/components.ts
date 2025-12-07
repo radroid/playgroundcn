@@ -53,7 +53,7 @@ function createEntry(
     displayName,
     category,
     description: description || `Shadcn ui: ${displayName}`,
-    sandpackTemplate: "react-ts",
+    sandpackTemplate: "vite-react-ts",
     dependencies: {
       ...BASE_DEPENDENCIES,
       ...specificDeps,
