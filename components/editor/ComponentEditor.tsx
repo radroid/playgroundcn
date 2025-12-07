@@ -411,7 +411,6 @@ function InternalToolbar({
             onReset={handleReset}
             onSave={handleSave}
             hasChanges={hasChanges}
-            globalCss={globalCss}
         />
     );
 }

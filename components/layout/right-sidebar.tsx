@@ -18,7 +18,7 @@ type RightSidebarProps = {
 };
 
 export function RightSidebar({ children, className }: RightSidebarProps) {
-  const { isMobile, rightOpen, setRightOpen } = useAppLayout();
+  const { isMobile, rightOpen, setRightOpen, rightCollapsed } = useAppLayout();
 
   if (isMobile) {
     return (
@@ -42,7 +42,10 @@ export function RightSidebar({ children, className }: RightSidebarProps) {
   return (
     <aside
       className={cn(
-        "hidden lg:flex w-[var(--right-sidebar-width)] shrink-0 flex-col border-l bg-sidebar overflow-hidden",
+        "hidden lg:flex shrink-0 flex-col border-l bg-sidebar overflow-hidden",
+        rightCollapsed
+          ? "w-[var(--right-sidebar-width-collapsed)]"
+          : "w-[var(--right-sidebar-width)]",
         className
       )}
     >

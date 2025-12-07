@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { FileBracesCorner, Code } from "lucide-react";
 import registry from "./registry.json";
 
 // =============================================================================
@@ -733,10 +734,12 @@ export function GlobalCssEditor() {
         {/* Export Buttons */}
         <div className="flex gap-2">
           <Button variant="outline" size="sm" className="flex-1 text-xs h-8">
-            Export Code
+            <Code className="size-3" />
+            Copy CSS
           </Button>
           <Button variant="outline" size="sm" className="flex-1 text-xs h-8">
-            Download CSS
+            <FileBracesCorner className="size-3" />
+            CSS as ZIP
           </Button>
         </div>
 
