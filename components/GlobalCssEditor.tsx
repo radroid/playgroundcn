@@ -16,7 +16,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { FileBracesCorner, Code, Check } from "lucide-react";
-import JSZip from "jszip";
 import registry from "./registry.json";
 
 // =============================================================================
@@ -623,7 +622,7 @@ function VariableInput({ variableKey, value, colorFormat, onChange }: VariableIn
           onKeyDown={handleTextKeyDown}
           className={cn(
             "h-7 text-xs flex-1 font-mono",
-            isInvalid && "!border-red-500 focus-visible:ring-red-500/40",
+            isInvalid && "border-red-500! focus-visible:ring-red-500/40",
             shouldShake && "animate-shake"
           )}
           placeholder="#000000"
@@ -709,6 +708,7 @@ export function GlobalCssEditor() {
   }, [globalCss]);
 
   const handleDownloadZip = useCallback(async () => {
+    const JSZip = (await import("jszip")).default;
     const zip = new JSZip();
     zip.file("globals.css", globalCss);
     const blob = await zip.generateAsync({ type: "blob" });

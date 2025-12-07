@@ -383,6 +383,49 @@ function InternalToolbar({
         return result;
     }, [sandpack.files, lastSavedFiles, componentName, exampleId]);
 
+    // Check if current files differ from original initialFiles (for reset button)
+    const hasChangesFromOriginal = useMemo(() => {
+        if (!initialFiles || Object.keys(initialFiles).length === 0) {
+            // If no initialFiles, check if there's cached data
+            return !!(typeof window !== "undefined" && componentName &&
+                getComponentCache(componentName, exampleId) !== undefined);
+        }
+
+        const currentFiles = sandpack.files;
+        
+        // Helper to get code from file
+        const getFileCode = (file: string | { code: string } | { code: string; hidden?: boolean }): string => {
+            return typeof file === 'string' ? file : file.code;
+        };
+
+        // Compare current files against original initialFiles
+        for (const [path, originalFile] of Object.entries(initialFiles)) {
+            const currentFile = currentFiles[path];
+            if (!currentFile) {
+                // File was deleted, has changes
+                return true;
+            }
+            
+            const currentCode = getFileCode(currentFile);
+            const originalCode = getFileCode(originalFile);
+            
+            if (currentCode !== originalCode) {
+                // Found a difference
+                return true;
+            }
+        }
+
+        // Also check if there are files in current that aren't in initial
+        for (const path of Object.keys(currentFiles)) {
+            if (!initialFiles[path] && path.startsWith('/src/')) {
+                // New file added (excluding system files)
+                return true;
+            }
+        }
+
+        return false;
+    }, [sandpack.files, initialFiles, componentName, exampleId]);
+
     const handleSave = useCallback(() => {
         if (onSave) {
             onSave(sandpack.files);
@@ -558,6 +601,7 @@ function InternalToolbar({
                 onReset={handleReset}
                 onSave={handleSave}
                 hasChanges={hasChanges}
+                hasChangesFromOriginal={hasChangesFromOriginal}
                 globalCss={globalCss}
                 localSaveStatus={localSaveStatus}
             />

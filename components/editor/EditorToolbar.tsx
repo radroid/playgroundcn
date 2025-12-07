@@ -13,12 +13,11 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useCallback, useState } from "react";
-import * as React from "react";
-import { Download, RotateCcw, CheckCircle2, Circle, X, Trash2 } from "lucide-react";
+import { useState } from "react";
 import { SaveStatus } from "./SaveStatusIndicator";
-import { toast } from "sonner";
+import SaveStatusIndicator from "./SaveStatusIndicator";
 import { clearAllComponentCaches } from "./storage";
+import { toast } from "sonner";
 
 type LocalSaveStatus = 'saved' | 'unsaved';
 
@@ -30,18 +29,56 @@ interface EditorToolbarProps {
     onReset: () => void;
     onSave: () => void;
     hasChanges?: boolean;
+    hasChangesFromOriginal?: boolean;
+    globalCss?: string;
+    localSaveStatus?: LocalSaveStatus;
 }
 
 export function EditorToolbar({
     readOnly,
     onReset,
     hasChanges = false,
+    hasChangesFromOriginal = false,
+    saveStatus,
+    localSaveStatus = 'saved',
 }: EditorToolbarProps) {
+    const [showResetDialog, setShowResetDialog] = useState(false);
+    const [showResetAllDialog, setShowResetAllDialog] = useState(false);
+
+    const handleResetClick = () => {
+        setShowResetDialog(true);
+    };
+
+    const handleResetConfirm = () => {
+        onReset();
+        setShowResetDialog(false);
+        toast.success("Component reset to original Shadcn code");
+    };
+
+    const handleResetAllClick = () => {
+        setShowResetAllDialog(true);
+    };
+
+    const handleResetAllLocalStorage = () => {
+        clearAllComponentCaches();
+        setShowResetAllDialog(false);
+        toast.success("All components reset to original state");
+        // Reload the page to reflect changes
+        window.location.reload();
+    };
+
     return (
         <div className="bg-muted/50 border-b border-border shrink-0">
             <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3">
-                {/* Empty left side or could be used for something else */}
-                <div className="flex items-center gap-2 min-w-0 shrink" />
+                {/* Left side - Save status and local save badge */}
+                <div className="flex items-center gap-2 min-w-0 shrink">
+                    <SaveStatusIndicator status={saveStatus} hasChanges={hasChanges} />
+                    {localSaveStatus === 'saved' && (
+                        <Badge variant="outline" className="text-xs">
+                            Saved locally
+                        </Badge>
+                    )}
+                </div>
 
                 {/* Actions */}
                 {!readOnly && (
@@ -50,51 +87,23 @@ export function EditorToolbar({
                             variant="ghost"
                             size="icon"
                             className="h-7 w-7"
-                            onClick={onReset}
-                            title="Reset to initial state"
-                            disabled={!hasChanges}
+                            onClick={handleResetClick}
+                            title="Reset to original Shadcn code"
+                            disabled={!hasChangesFromOriginal}
                         >
                             <RotateCcw className="h-4 w-4" />
                         </Button>
                     </div>
-
-                    {/* Actions */}
-                    {!readOnly && (
-                        <div className="flex items-center gap-1">
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7"
-                                onClick={handleResetClick}
-                                title="Reset to initial state"
-                                disabled={hasChanges === false}
-                            >
-                                <RotateCcw className="h-4 w-4" />
-                            </Button>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                type="button"
-                                onClick={handleDownloadCss}
-                                title="Download current global CSS"
-                                disabled={!globalCss}
-                            >
-                                <Download className="mr-1 h-4 w-4" />
-                                <span className="hidden sm:inline">
-                                    Download CSS
-                                </span>
-                                <span className="sm:hidden">CSS</span>
-                            </Button>
-                        </div>
-                    )}
-                </div>
+                )}
             </div>
+
+            {/* Reset Component Dialog */}
             <AlertDialog open={showResetDialog} onOpenChange={setShowResetDialog}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>Reset Component?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            This will permanently delete all your code changes for this component and reset it to the original Shadcn state. 
+                            This will permanently delete all your code changes for this component and reset it to the original Shadcn component code (the initial load state). 
                             All changes stored in your browser's local storage for this component will be lost. This action cannot be undone.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
@@ -109,6 +118,8 @@ export function EditorToolbar({
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {/* Reset All Components Dialog */}
             <AlertDialog open={showResetAllDialog} onOpenChange={setShowResetAllDialog}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
@@ -129,6 +140,6 @@ export function EditorToolbar({
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-        </>
+        </div>
     );
 }

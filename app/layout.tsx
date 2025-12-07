@@ -11,10 +11,6 @@ import {
   ComponentsList,
   GlobalCssPanel,
 } from "../components/layout";
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "../components/ui/sidebar";
 import { Toaster } from "../components/ui/sonner";
 
 const geistSans = Geist({
