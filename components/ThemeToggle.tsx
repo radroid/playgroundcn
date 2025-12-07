@@ -52,25 +52,31 @@ export function ThemeToggle() {
       }
     };
 
+    let mediaQuery: MediaQueryList | null = null;
+    let handleChange: ((e: MediaQueryListEvent) => void) | null = null;
+
     if (theme === "dark") {
       applyTheme(true);
     } else if (theme === "light") {
       applyTheme(false);
     } else {
       // theme === "system" - use system preference
-      const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+      mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
       applyTheme(mediaQuery.matches);
 
       // Listen for system theme changes
-      const handleChange = (e: MediaQueryListEvent) => {
+      handleChange = (e: MediaQueryListEvent) => {
         applyTheme(e.matches);
       };
       mediaQuery.addEventListener("change", handleChange);
-
-      return () => {
-        mediaQuery.removeEventListener("change", handleChange);
-      };
     }
+
+    // Cleanup: always remove listener if it was added
+    return () => {
+      if (mediaQuery && handleChange) {
+        mediaQuery.removeEventListener("change", handleChange);
+      }
+    };
   }, [theme]);
 
   return (

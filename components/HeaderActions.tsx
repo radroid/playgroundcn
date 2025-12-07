@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 
-import { ThemeToggle } from "./ThemeToggle";
 import { Avatar, AvatarImage, AvatarFallback } from "./ui/avatar";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "./ui/hover-card";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
@@ -101,8 +100,6 @@ export function HeaderActions() {
           </div>
         </HoverCardContent>
       </HoverCard>
-
-      <ThemeToggle />
     </div>
   );
 }

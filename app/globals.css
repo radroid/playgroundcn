@@ -173,6 +173,18 @@
   }
 }
 
+/* Shake animation for invalid inputs */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  50% { transform: translateX(4px); }
+  75% { transform: translateX(-4px); }
+}
+
+.animate-shake {
+  animation: shake 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
 /* Ensure Monaco Editor (used by Sandpack) can scroll vertically */
 .editor-container [class*="sp-code-editor"],
 .readonly-editor-container [class*="sp-code-editor"] {

@@ -1,11 +1,16 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { Sidebar } from "../components/Sidebar";
-import { GlobalSearch } from "../components/GlobalSearch";
-import { HeaderActions } from "../components/HeaderActions";
 import { Providers } from "../components/Providers";
 import {
+  AppLayout,
+  AppHeader,
+  LeftSidebar,
+  RightSidebar,
+  MainContent,
+  ComponentsList,
+  GlobalCssPanel,
+} from "../components/layout";
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
@@ -25,6 +30,18 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "PlaygroundCn",
   description: "Static Shadcn UI playground.",
+  icons: {
+    icon: [
+      {
+        url: "/favicon_light.png",
+        media: "(prefers-color-scheme: light)",
+      },
+      {
+        url: "/favicon_dark.png",
+        media: "(prefers-color-scheme: dark)",
+      },
+    ],
+  },
 };
 
 export default function RootLayout({
@@ -38,27 +55,21 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <Providers>
-          <SidebarProvider>
-            <Sidebar />
-            <div className="fixed right-4 top-4 z-40">
-              <HeaderActions />
+          <AppLayout>
+            <AppHeader />
+            <div className="flex flex-1 overflow-hidden">
+              <LeftSidebar>
+                <ComponentsList />
+              </LeftSidebar>
+              <MainContent className="p-4">{children}</MainContent>
+              <RightSidebar>
+                <GlobalCssPanel />
+              </RightSidebar>
             </div>
-            <SidebarInset>
-              <div className="mx-auto flex w-full max-w-6xl flex-col px-4 py-4">
-                <div className="mb-4 flex items-center gap-6">
-                  <SidebarTrigger />
-                  <div className="w-full max-w-xs">
-                    <GlobalSearch />
-                  </div>
-                </div>
-                {children}
-              </div>
-            </SidebarInset>
-          </SidebarProvider>
+          </AppLayout>
         </Providers>
         <Toaster />
       </body>
     </html>
   );
 }
-
