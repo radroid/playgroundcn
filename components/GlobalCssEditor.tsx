@@ -15,7 +15,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { FileBracesCorner, Code } from "lucide-react";
+import { FileBracesCorner, Code, Check } from "lucide-react";
+import JSZip from "jszip";
 import registry from "./registry.json";
 
 // =============================================================================
@@ -681,9 +682,10 @@ function VariableCategorySection({
 // =============================================================================
 
 export function GlobalCssEditor() {
-  const { currentTheme, cssVariables, setTheme, updateVariable } = useGlobalCss();
+  const { currentTheme, cssVariables, setTheme, updateVariable, globalCss } = useGlobalCss();
   const [activeMode, setActiveMode] = useState<"light" | "dark">("light");
   const [colorFormat, setColorFormat] = useState<ColorFormat>("hex");
+  const [copied, setCopied] = useState(false);
 
   const handleThemeSelect = useCallback(
     (value: string) => {
@@ -699,6 +701,24 @@ export function GlobalCssEditor() {
     },
     [activeMode, updateVariable]
   );
+
+  const handleCopyCss = useCallback(async () => {
+    await navigator.clipboard.writeText(globalCss);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }, [globalCss]);
+
+  const handleDownloadZip = useCallback(async () => {
+    const zip = new JSZip();
+    zip.file("globals.css", globalCss);
+    const blob = await zip.generateAsync({ type: "blob" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "css.zip";
+    link.click();
+    URL.revokeObjectURL(url);
+  }, [globalCss]);
 
   const options: ComboboxOption[] = useMemo(() => {
     const themeOptions: ComboboxOption[] = registry.items
@@ -733,11 +753,11 @@ export function GlobalCssEditor() {
       <div className="shrink-0 space-y-3">
         {/* Export Buttons */}
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" className="flex-1 text-xs h-8">
-            <Code className="size-3" />
-            Copy CSS
+          <Button variant="outline" size="sm" className="flex-1 text-xs h-8" onClick={handleCopyCss}>
+            {copied ? <Check className="size-3" /> : <Code className="size-3" />}
+            {copied ? "Copied!" : "Copy CSS"}
           </Button>
-          <Button variant="outline" size="sm" className="flex-1 text-xs h-8">
+          <Button variant="outline" size="sm" className="flex-1 text-xs h-8" onClick={handleDownloadZip}>
             <FileBracesCorner className="size-3" />
             CSS as ZIP
           </Button>
