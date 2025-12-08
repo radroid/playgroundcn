@@ -26,6 +26,7 @@ import {
 import { getComponentCache, setComponentCache, clearComponentCache } from "./storage";
 import { useGlobalCss } from "@/lib/context/global-css-context";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 // =============================================================================
 // Types
@@ -812,6 +813,54 @@ export default function ComponentEditor({
         return () => observer.disconnect();
     }, []);
 
+    // Handle responsive layout for SandpackLayout based on available space
+    const layoutRef = useRef<HTMLDivElement>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [isStacked, setIsStacked] = useState(false);
+    
+    useEffect(() => {
+        if (!layoutRef.current || !containerRef.current) return;
+
+        const sandpackLayout = layoutRef.current.querySelector('[class*="sp-layout"]') as HTMLElement;
+        if (!sandpackLayout) return;
+
+        const updateLayoutDirection = () => {
+            if (!containerRef.current) return;
+            
+            // Get the container width (available space for both editor and preview)
+            const containerWidth = containerRef.current.offsetWidth;
+            // Minimum width needed for side-by-side layout: editor (350px) + preview (400px) + padding
+            // We switch to stacked when container is less than ~850px
+            const minContainerWidthForSideBySide = 850;
+            
+            const shouldStack = containerWidth < minContainerWidthForSideBySide;
+            setIsStacked(shouldStack);
+            
+            if (sandpackLayout) {
+                sandpackLayout.style.flexDirection = shouldStack ? 'column' : 'row';
+            }
+        };
+
+        // Use ResizeObserver to watch for container size changes
+        const resizeObserver = new ResizeObserver(() => {
+            // Small delay to ensure layout has settled
+            setTimeout(updateLayoutDirection, 10);
+        });
+
+        resizeObserver.observe(containerRef.current);
+        
+        // Initial check with a small delay to ensure DOM is ready
+        setTimeout(updateLayoutDirection, 100);
+
+        // Also listen to window resize as fallback
+        window.addEventListener('resize', updateLayoutDirection);
+        
+        return () => {
+            resizeObserver.disconnect();
+            window.removeEventListener('resize', updateLayoutDirection);
+        };
+    }, []);
+
     // Track last saved files state for this component instance.
     // We seed it from localStorage so edits persist across page reloads and navigation.
     // Use lazy initializer to load from cache only once on mount
@@ -1028,52 +1077,84 @@ export default function ComponentEditor({
                     />
                 )}
 
-                {/* Editor and Preview using SandpackLayout for proper live updates */}
-                <SandpackLayout style={{ height: "calc(100vh - 200px)", minHeight: "600px", display: "flex", overflow: "hidden" }}>
-                    {/* Editor Panel */}
-                    <div
-                        className={readOnly ? "readonly-editor-container" : "editor-container"}
-                        style={{
-                            flex: 1,
-                            display: "flex",
-                            flexDirection: "column",
-                            minWidth: 0,
-                            minHeight: 0,
-                            height: "100%",
-                            position: "relative"
-                        }}
+                {/* Editor and Preview - Responsive layout */}
+                <div 
+                    ref={containerRef}
+                    className="w-full"
+                    style={{ 
+                        height: "calc(100vh - 300px)", 
+                        maxHeight: "800px",
+                        minHeight: "500px", 
+                        overflow: "hidden" 
+                    }}
+                >
+                    <div 
+                        ref={layoutRef}
+                        className={cn(
+                            "flex w-full h-full",
+                            isStacked ? "flex-col" : "flex-row"
+                        )}
                     >
-                        <CopyCodeButton />
-                        <RegistryTabMarker
-                            componentPath={componentPath}
-                            registryDependenciesCode={registryDependenciesCode}
-                        />
-                        <SandpackCodeEditor
-                            showTabs
-                            showLineNumbers
-                            showInlineErrors
-                            wrapContent={false}
-                            readOnly={readOnly}
-                            style={{
-                                flex: "1 1 auto",
-                                minHeight: 0,
-                                height: "100%",
-                                width: "100%"
-                            }}
-                        />
-                    </div>
+                        <SandpackLayout style={{ display: "flex", height: "100%", width: "100%", overflow: "hidden" }}>
+                            {/* Editor Panel */}
+                            <div
+                                className={cn(
+                                    readOnly ? "readonly-editor-container" : "editor-container",
+                                    "flex-1 min-w-0",
+                                    !isStacked && "max-w-[50%]"
+                                )}
+                                style={{
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    minHeight: 0,
+                                    height: "100%",
+                                    position: "relative",
+                                    minWidth: isStacked ? "100%" : "350px"
+                                }}
+                            >
+                                <CopyCodeButton />
+                                <RegistryTabMarker
+                                    componentPath={componentPath}
+                                    registryDependenciesCode={registryDependenciesCode}
+                                />
+                                <SandpackCodeEditor
+                                    showTabs
+                                    showLineNumbers
+                                    showInlineErrors
+                                    wrapContent={false}
+                                    readOnly={readOnly}
+                                    style={{
+                                        flex: "1 1 auto",
+                                        minHeight: 0,
+                                        height: "100%",
+                                        width: "100%"
+                                    }}
+                                />
+                            </div>
 
-                    {/* Preview Panel with styling */}
-                    <div className="flex-1 p-4 bg-muted/30 flex items-center justify-center" style={{ minWidth: 0, minHeight: 0, overflow: "auto" }}>
-                        <div className="h-full w-full bg-background rounded-lg overflow-auto shadow-sm border border-border/50">
-                            <SandpackPreview
-                                style={{ height: "100%", width: "100%" }}
-                                showOpenInCodeSandbox={false}
-                                showRefreshButton
-                            />
-                        </div>
+                            {/* Preview Panel with styling */}
+                            <div 
+                                className={cn(
+                                    "flex-1 min-w-0 p-4 bg-muted/30 flex items-center justify-center",
+                                    !isStacked && "max-w-[50%]"
+                                )}
+                                style={{ 
+                                    minHeight: 0, 
+                                    overflow: "auto",
+                                    minWidth: isStacked ? "100%" : "400px" // Minimum width to prevent component disappearance
+                                }}
+                            >
+                                <div className="h-full w-full bg-background rounded-lg overflow-auto shadow-sm border border-border/50" style={{ minWidth: "350px" }}>
+                                    <SandpackPreview
+                                        style={{ height: "100%", width: "100%", minWidth: "350px" }}
+                                        showOpenInCodeSandbox={false}
+                                        showRefreshButton
+                                    />
+                                </div>
+                            </div>
+                        </SandpackLayout>
                     </div>
-                </SandpackLayout>
+                </div>
             </SandpackProvider>
         </div>
     );
