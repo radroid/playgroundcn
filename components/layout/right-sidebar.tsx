@@ -42,7 +42,7 @@ export function RightSidebar({ children, className }: RightSidebarProps) {
   return (
     <aside
       className={cn(
-        "hidden lg:flex shrink-0 flex-col border-l bg-sidebar overflow-hidden",
+        "hidden md:flex shrink-0 flex-col border-l bg-sidebar overflow-hidden",
         rightCollapsed
           ? "w-[var(--right-sidebar-width-collapsed)]"
           : "w-[var(--right-sidebar-width)]",
