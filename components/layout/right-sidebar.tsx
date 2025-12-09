@@ -25,7 +25,7 @@ export function RightSidebar({ children, className }: RightSidebarProps) {
       <Sheet open={rightOpen} onOpenChange={setRightOpen}>
         <SheetContent
           side="right"
-          className="w-[var(--sidebar-width-mobile)] p-0"
+          className="w-(--sidebar-width-mobile) p-0"
         >
           <SheetHeader className="sr-only">
             <SheetTitle>Global CSS</SheetTitle>
@@ -44,8 +44,8 @@ export function RightSidebar({ children, className }: RightSidebarProps) {
       className={cn(
         "hidden md:flex shrink-0 flex-col border-l bg-sidebar overflow-hidden",
         rightCollapsed
-          ? "w-[var(--right-sidebar-width-collapsed)]"
-          : "w-[var(--right-sidebar-width)]",
+          ? "w-(--right-sidebar-width-collapsed)"
+          : "w-(--right-sidebar-width)",
         className
       )}
     >

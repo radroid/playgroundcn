@@ -5,13 +5,10 @@ import { Providers } from "../components/Providers";
 import {
   AppLayout,
   AppHeader,
-  LeftSidebar,
-  RightSidebar,
-  MainContent,
-  ComponentsList,
-  GlobalCssPanel,
+  ResizableLayout,
 } from "../components/layout";
 import { Toaster } from "../components/ui/sonner";
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "../components/ui/resizable";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -53,15 +50,7 @@ export default function RootLayout({
         <Providers>
           <AppLayout>
             <AppHeader />
-            <div className="flex flex-1 overflow-hidden">
-              <LeftSidebar>
-                <ComponentsList />
-              </LeftSidebar>
-              <MainContent className="p-4">{children}</MainContent>
-              <RightSidebar>
-                <GlobalCssPanel />
-              </RightSidebar>
-            </div>
+            <ResizableLayout>{children}</ResizableLayout>
           </AppLayout>
         </Providers>
         <Toaster />

@@ -6,3 +6,4 @@ export { RightSidebar } from "./right-sidebar";
 export { MainContent } from "./main-content";
 export { ComponentsList } from "./components-list";
 export { GlobalCssPanel } from "./global-css-panel";
+export { ResizableLayout } from "./resizable-layout";

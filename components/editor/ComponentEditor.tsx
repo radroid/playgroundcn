@@ -27,6 +27,7 @@ import { getComponentCache, setComponentCache, clearComponentCache } from "./sto
 import { useGlobalCss } from "@/lib/context/global-css-context";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useResponsive } from "@/hooks/use-responsive";
 
 // =============================================================================
 // Types
@@ -77,7 +78,7 @@ const DEFAULT_DEPENDENCIES = {
 // Copy Code Button Component (lives inside SandpackProvider)
 // =============================================================================
 
-function CopyCodeButton() {
+function CopyCodeButton({ isMobile, isTablet }: { isMobile: boolean; isTablet: boolean }) {
     const { sandpack } = useSandpack();
     const [copied, setCopied] = useState(false);
 
@@ -99,14 +100,18 @@ function CopyCodeButton() {
         <Tooltip>
             <TooltipTrigger asChild>
                 <button
-                    className="copy-code-btn absolute top-12 right-2 z-10 shadow-sm bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground border border-border rounded-md flex items-center justify-center w-8 h-8 transition-colors"
+                    className={cn(
+                        "copy-code-btn absolute z-10 shadow-sm bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground border border-border rounded-md flex items-center justify-center transition-colors",
+                        // Responsive positioning and sizing
+                        isMobile ? "top-10 right-1.5 w-7 h-7" : isTablet ? "top-11 right-1.5 w-8 h-8" : "top-12 right-2 w-8 h-8"
+                    )}
                     onClick={handleCopy}
                     aria-label="Copy code"
                 >
                     {copied ? (
-                        <Check className="h-4 w-4" />
+                        <Check className={cn(isMobile ? "h-3.5 w-3.5" : "h-4 w-4")} />
                     ) : (
-                        <Copy className="h-4 w-4" />
+                        <Copy className={cn(isMobile ? "h-3.5 w-3.5" : "h-4 w-4")} />
                     )}
                 </button>
             </TooltipTrigger>
@@ -252,6 +257,8 @@ interface InternalToolbarProps {
     initialFiles?: Record<string, { code: string }>;
     localSaveStatus?: LocalSaveStatus;
     onLocalSaveStatusChange?: (status: LocalSaveStatus) => void;
+    isMobile?: boolean;
+    isTablet?: boolean;
 }
 
 function InternalToolbar({
@@ -269,6 +276,8 @@ function InternalToolbar({
     initialFiles,
     localSaveStatus = 'saved',
     onLocalSaveStatusChange,
+    isMobile,
+    isTablet,
 }: InternalToolbarProps) {
     const { sandpack } = useSandpack();
 
@@ -325,7 +334,13 @@ function InternalToolbar({
     const lastFilesHashRef = useRef<string>("");
     const lastSavedHashRef = useRef<string>("");
     
-    const hasChanges = useMemo(() => {
+    // Use useState to ensure consistent initial render (false) on both server and client
+    // This prevents hydration mismatches
+    const [hasChanges, setHasChanges] = useState(false);
+    
+    // Compute hasChanges in useEffect to avoid hydration mismatch
+    // This ensures server and client render the same initially
+    useEffect(() => {
         // Check if there's cached data in localStorage (even if current files match)
         // This allows reset button to be enabled when there's data to reset
         // Only check localStorage if we don't have lastSavedFiles (which means cache exists)
@@ -336,7 +351,8 @@ function InternalToolbar({
             // If we have cached data but no lastSavedFiles loaded yet, enable reset
             const result = !!hasCachedData;
             hasChangesRef.current = result;
-            return result;
+            setHasChanges(result);
+            return;
         }
 
         const currentFiles = sandpack.files;
@@ -378,18 +394,23 @@ function InternalToolbar({
         const hasFileChanges = currentHash !== savedHash;
         const result = hasFileChanges || !!hasCachedData;
         
-        // Update ref
+        // Update ref and state
         hasChangesRef.current = result;
-        
-        return result;
+        setHasChanges(result);
     }, [sandpack.files, lastSavedFiles, componentName, exampleId]);
 
     // Check if current files differ from original initialFiles (for reset button)
-    const hasChangesFromOriginal = useMemo(() => {
+    // Use useState to ensure consistent initial render (false) on both server and client
+    const [hasChangesFromOriginal, setHasChangesFromOriginal] = useState(false);
+    
+    // Compute hasChangesFromOriginal in useEffect to avoid hydration mismatch
+    useEffect(() => {
         if (!initialFiles || Object.keys(initialFiles).length === 0) {
             // If no initialFiles, check if there's cached data
-            return !!(typeof window !== "undefined" && componentName &&
+            const result = !!(typeof window !== "undefined" && componentName &&
                 getComponentCache(componentName, exampleId) !== undefined);
+            setHasChangesFromOriginal(result);
+            return;
         }
 
         const currentFiles = sandpack.files;
@@ -399,12 +420,15 @@ function InternalToolbar({
             return typeof file === 'string' ? file : file.code;
         };
 
+        let hasChanges = false;
+
         // Compare current files against original initialFiles
         for (const [path, originalFile] of Object.entries(initialFiles)) {
             const currentFile = currentFiles[path];
             if (!currentFile) {
                 // File was deleted, has changes
-                return true;
+                hasChanges = true;
+                break;
             }
             
             const currentCode = getFileCode(currentFile);
@@ -412,19 +436,23 @@ function InternalToolbar({
             
             if (currentCode !== originalCode) {
                 // Found a difference
-                return true;
+                hasChanges = true;
+                break;
             }
         }
 
         // Also check if there are files in current that aren't in initial
-        for (const path of Object.keys(currentFiles)) {
-            if (!initialFiles[path] && path.startsWith('/src/')) {
-                // New file added (excluding system files)
-                return true;
+        if (!hasChanges) {
+            for (const path of Object.keys(currentFiles)) {
+                if (!initialFiles[path] && path.startsWith('/src/')) {
+                    // New file added (excluding system files)
+                    hasChanges = true;
+                    break;
+                }
             }
         }
 
-        return false;
+        setHasChangesFromOriginal(hasChanges);
     }, [sandpack.files, initialFiles, componentName, exampleId]);
 
     const handleSave = useCallback(() => {
@@ -605,6 +633,8 @@ function InternalToolbar({
                 hasChangesFromOriginal={hasChangesFromOriginal}
                 globalCss={globalCss}
                 localSaveStatus={localSaveStatus}
+                isMobile={isMobile}
+                isTablet={isTablet}
             />
         );
 }
@@ -796,6 +826,9 @@ export default function ComponentEditor({
     const [isDarkFromDom, setIsDarkFromDom] = useState(false);
     
     useEffect(() => {
+        // Only run on client side
+        if (typeof window === "undefined") return;
+        
         // Initial check
         setIsDarkFromDom(document.documentElement.classList.contains('dark'));
         
@@ -813,6 +846,9 @@ export default function ComponentEditor({
         return () => observer.disconnect();
     }, []);
 
+    // Responsive breakpoints
+    const { isMobile, isTablet } = useResponsive();
+    
     // Handle responsive layout for SandpackLayout based on available space
     const layoutRef = useRef<HTMLDivElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -829,9 +865,17 @@ export default function ComponentEditor({
             
             // Get the container width (available space for both editor and preview)
             const containerWidth = containerRef.current.offsetWidth;
-            // Minimum width needed for side-by-side layout: editor (350px) + preview (400px) + padding
-            // We switch to stacked when container is less than ~850px
-            const minContainerWidthForSideBySide = 850;
+            
+            // Adjust breakpoint based on screen size:
+            // - Mobile: always stack
+            // - Tablet: stack below 900px
+            // - Desktop: stack below 850px
+            let minContainerWidthForSideBySide = 850;
+            if (isMobile) {
+                minContainerWidthForSideBySide = Infinity; // Always stack on mobile
+            } else if (isTablet) {
+                minContainerWidthForSideBySide = 900; // Slightly higher for tablet
+            }
             
             const shouldStack = containerWidth < minContainerWidthForSideBySide;
             setIsStacked(shouldStack);
@@ -859,7 +903,7 @@ export default function ComponentEditor({
             resizeObserver.disconnect();
             window.removeEventListener('resize', updateLayoutDirection);
         };
-    }, []);
+    }, [isMobile, isTablet]);
 
     // Track last saved files state for this component instance.
     // We seed it from localStorage so edits persist across page reloads and navigation.
@@ -1045,6 +1089,8 @@ export default function ComponentEditor({
                         exampleId={exampleId}
                         localSaveStatus={localSaveStatus}
                         onLocalSaveStatusChange={setLocalSaveStatus}
+                        isMobile={isMobile}
+                        isTablet={isTablet}
                         initialFiles={useMemo(() => {
                             // Create initial files snapshot from the original source files (not cached)
                             // This is used for reset functionality - restore to original state
@@ -1082,9 +1128,14 @@ export default function ComponentEditor({
                     ref={containerRef}
                     className="w-full"
                     style={{ 
-                        height: "calc(100vh - 300px)", 
-                        maxHeight: "800px",
-                        minHeight: "500px", 
+                        // Responsive heights based on screen size
+                        height: isMobile 
+                            ? "calc(100vh - 200px)"  // Smaller on mobile
+                            : isTablet 
+                            ? "calc(100vh - 250px)"  // Medium on tablet
+                            : "calc(100vh - 300px)", // Full height on desktop
+                        maxHeight: isMobile ? "600px" : isTablet ? "700px" : "800px",
+                        minHeight: isMobile ? "400px" : isTablet ? "450px" : "500px", 
                         overflow: "hidden" 
                     }}
                 >
@@ -1109,25 +1160,34 @@ export default function ComponentEditor({
                                     minHeight: 0,
                                     height: "100%",
                                     position: "relative",
-                                    minWidth: isStacked ? "100%" : "350px"
+                                    // Responsive minimum widths
+                                    minWidth: isStacked 
+                                        ? "100%" 
+                                        : isMobile 
+                                        ? "280px"  // Smaller on mobile
+                                        : isTablet 
+                                        ? "320px"  // Medium on tablet
+                                        : "350px"  // Full width on desktop
                                 }}
                             >
-                                <CopyCodeButton />
+                                <CopyCodeButton isMobile={isMobile} isTablet={isTablet} />
                                 <RegistryTabMarker
                                     componentPath={componentPath}
                                     registryDependenciesCode={registryDependenciesCode}
                                 />
                                 <SandpackCodeEditor
                                     showTabs
-                                    showLineNumbers
+                                    showLineNumbers={!isMobile} // Hide line numbers on mobile to save space
                                     showInlineErrors
-                                    wrapContent={false}
+                                    wrapContent={isMobile} // Wrap content on mobile for better readability
                                     readOnly={readOnly}
                                     style={{
                                         flex: "1 1 auto",
                                         minHeight: 0,
                                         height: "100%",
-                                        width: "100%"
+                                        width: "100%",
+                                        // Responsive font size
+                                        fontSize: isMobile ? "13px" : isTablet ? "14px" : undefined
                                     }}
                                 />
                             </div>
@@ -1135,18 +1195,37 @@ export default function ComponentEditor({
                             {/* Preview Panel with styling */}
                             <div 
                                 className={cn(
-                                    "flex-1 min-w-0 p-4 bg-muted/30 flex items-center justify-center",
+                                    "flex-1 min-w-0 bg-muted/30 flex items-center justify-center",
+                                    // Responsive padding
+                                    isMobile ? "p-2" : isTablet ? "p-3" : "p-4",
                                     !isStacked && "max-w-[50%]"
                                 )}
                                 style={{ 
                                     minHeight: 0, 
                                     overflow: "auto",
-                                    minWidth: isStacked ? "100%" : "400px" // Minimum width to prevent component disappearance
+                                    // Responsive minimum widths
+                                    minWidth: isStacked 
+                                        ? "100%" 
+                                        : isMobile 
+                                        ? "280px"  // Smaller on mobile
+                                        : isTablet 
+                                        ? "350px"  // Medium on tablet
+                                        : "400px"  // Full width on desktop
                                 }}
                             >
-                                <div className="h-full w-full bg-background rounded-lg overflow-auto shadow-sm border border-border/50" style={{ minWidth: "350px" }}>
+                                <div 
+                                    className="h-full w-full bg-background rounded-lg overflow-auto shadow-sm border border-border/50" 
+                                    style={{ 
+                                        // Responsive minimum widths for preview
+                                        minWidth: isMobile ? "280px" : isTablet ? "320px" : "350px" 
+                                    }}
+                                >
                                     <SandpackPreview
-                                        style={{ height: "100%", width: "100%", minWidth: "350px" }}
+                                        style={{ 
+                                            height: "100%", 
+                                            width: "100%", 
+                                            minWidth: isMobile ? "280px" : isTablet ? "320px" : "350px" 
+                                        }}
                                         showOpenInCodeSandbox={false}
                                         showRefreshButton
                                     />

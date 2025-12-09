@@ -18,6 +18,7 @@ import { SaveStatus } from "./SaveStatusIndicator";
 import SaveStatusIndicator from "./SaveStatusIndicator";
 import { clearAllComponentCaches } from "./storage";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 type LocalSaveStatus = 'saved' | 'unsaved';
 
@@ -32,6 +33,8 @@ interface EditorToolbarProps {
     hasChangesFromOriginal?: boolean;
     globalCss?: string;
     localSaveStatus?: LocalSaveStatus;
+    isMobile?: boolean;
+    isTablet?: boolean;
 }
 
 export function EditorToolbar({
@@ -41,7 +44,11 @@ export function EditorToolbar({
     hasChangesFromOriginal = false,
     saveStatus,
     localSaveStatus = 'saved',
+    isMobile = false,
+    isTablet = false,
 }: EditorToolbarProps) {
+    // Always use props - never call hooks in conditionally rendered components
+    // This ensures consistent hook counts
     const [showResetDialog, setShowResetDialog] = useState(false);
     const [showResetAllDialog, setShowResetAllDialog] = useState(false);
 
@@ -69,12 +76,19 @@ export function EditorToolbar({
 
     return (
         <div className="bg-muted/50 border-b border-border shrink-0">
-            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3">
+            <div className={cn(
+                "flex flex-wrap items-center justify-between gap-x-4 gap-y-2",
+                // Responsive padding
+                isMobile ? "px-2 py-2" : isTablet ? "px-3 py-2.5" : "px-4 py-3"
+            )}>
                 {/* Left side - Save status and local save badge */}
                 <div className="flex items-center gap-2 min-w-0 shrink">
                     <SaveStatusIndicator status={saveStatus} hasChanges={hasChanges} />
-                    {localSaveStatus === 'saved' && (
-                        <Badge variant="outline" className="text-xs">
+                    {localSaveStatus === 'saved' && !isMobile && (
+                        <Badge variant="outline" className={cn(
+                            "text-xs",
+                            isTablet && "text-[10px] px-1.5 py-0"
+                        )}>
                             Saved locally
                         </Badge>
                     )}
@@ -86,12 +100,16 @@ export function EditorToolbar({
                         <Button
                             variant="ghost"
                             size="icon"
-                            className="h-7 w-7"
+                            className={cn(
+                                isMobile ? "h-6 w-6" : isTablet ? "h-7 w-7" : "h-7 w-7"
+                            )}
                             onClick={handleResetClick}
                             title="Reset to original Shadcn code"
                             disabled={!hasChangesFromOriginal}
                         >
-                            <RotateCcw className="h-4 w-4" />
+                            <RotateCcw className={cn(
+                                isMobile ? "h-3.5 w-3.5" : "h-4 w-4"
+                            )} />
                         </Button>
                     </div>
                 )}
