@@ -28,6 +28,7 @@ export function LeftSidebar({ children, className }: LeftSidebarProps) {
         <SheetContent
           side="left"
           className="w-(--sidebar-width-mobile) p-0"
+          showCloseButton={false}
         >
           <SheetHeader className="sr-only">
             <SheetTitle>Components</SheetTitle>

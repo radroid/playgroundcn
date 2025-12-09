@@ -26,6 +26,7 @@ export function RightSidebar({ children, className }: RightSidebarProps) {
         <SheetContent
           side="right"
           className="w-(--sidebar-width-mobile) p-0"
+          showCloseButton={false}
         >
           <SheetHeader className="sr-only">
             <SheetTitle>Global CSS</SheetTitle>

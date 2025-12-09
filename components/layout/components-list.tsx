@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { PanelLeftClose } from "lucide-react";
+import { PanelLeftClose, PanelRightClose } from "lucide-react";
 
 import { useAppLayout } from "./app-layout-provider";
 import { components } from "@/lib/registry/components";
@@ -17,7 +17,7 @@ type SidebarItem = {
 
 export function ComponentsList() {
   const pathname = usePathname();
-  const { isMobile, setLeftOpen, toggleLeftCollapse } = useAppLayout();
+  const { isMobile, setLeftOpen, toggleLeft, toggleLeftCollapse } = useAppLayout();
 
   const registryItems: SidebarItem[] = components.map((component) => ({
     href: `/component/${component.id}`,
@@ -34,6 +34,14 @@ export function ComponentsList() {
     }
   };
 
+  const handleCollapseClick = () => {
+    if (isMobile) {
+      toggleLeft();
+    } else {
+      toggleLeftCollapse();
+    }
+  };
+
   return (
     <div className="flex h-full flex-col overflow-hidden">
       <div className="flex h-14 shrink-0 items-center justify-between border-b px-4">
@@ -44,10 +52,14 @@ export function ComponentsList() {
           variant="ghost"
           size="icon"
           className="size-8"
-          onClick={toggleLeftCollapse}
-          aria-label="Collapse components sidebar"
+          onClick={handleCollapseClick}
+          aria-label={isMobile ? "Toggle components sidebar" : "Collapse components sidebar"}
         >
-          <PanelLeftClose className="size-4" />
+          {isMobile ? (
+            <PanelRightClose className="size-4" />
+          ) : (
+            <PanelLeftClose className="size-4" />
+          )}
         </Button>
       </div>
       <ScrollArea className="flex-1 min-h-0">

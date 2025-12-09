@@ -92,22 +92,27 @@ export function AppHeader() {
           </ContextMenu>
         </div>
 
-        <div className="w-full max-w-xs">
-          <GlobalSearch />
-        </div>
+        {!isMobile && (
+          <div className="w-full max-w-xs">
+            <GlobalSearch />
+          </div>
+        )}
 
         <div className="flex items-center gap-2 sm:gap-4">
           <HeaderActions />
           {isMobile && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-8"
-              onClick={toggleRight}
-              aria-label="Open CSS sidebar"
-            >
-              <PanelRightIcon className="size-4" />
-            </Button>
+            <>
+              <GlobalSearch />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-8"
+                onClick={toggleRight}
+                aria-label="Open CSS sidebar"
+              >
+                <PanelRightIcon className="size-4" />
+              </Button>
+            </>
           )}
         </div>
       </div>

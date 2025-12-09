@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { Search } from "lucide-react";
 
 import { components } from "@/lib/registry/components";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import {
   CommandDialog,
@@ -30,6 +32,7 @@ export function GlobalSearch() {
   const [open, setOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
+  const isMobile = useIsMobile();
 
   // Toggle command palette with Cmd+K / Ctrl+K
   useEffect(() => {
@@ -63,21 +66,33 @@ export function GlobalSearch() {
 
   return (
     <>
-      <Button
-        variant="outline"
-        className="h-9 w-full max-w-xs justify-between text-xs text-muted-foreground sm:text-sm"
-        onClick={() => setOpen(true)}
-      >
-        <span className="truncate">Search components...</span>
-        <span className="ml-3 hidden items-center gap-1 sm:inline-flex">
-          <kbd className="rounded border bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-            ⌘
-          </kbd>
-          <kbd className="rounded border bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-            K
-          </kbd>
-        </span>
-      </Button>
+      {isMobile ? (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-8"
+          onClick={() => setOpen(true)}
+          aria-label="Search components"
+        >
+          <Search className="size-4" />
+        </Button>
+      ) : (
+        <Button
+          variant="outline"
+          className="h-9 w-full max-w-xs justify-between text-xs text-muted-foreground sm:text-sm"
+          onClick={() => setOpen(true)}
+        >
+          <span className="truncate">Search components...</span>
+          <span className="ml-3 hidden items-center gap-1 sm:inline-flex">
+            <kbd className="rounded border bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+              ⌘
+            </kbd>
+            <kbd className="rounded border bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+              K
+            </kbd>
+          </span>
+        </Button>
+      )}
 
       <CommandDialog open={open} onOpenChange={setOpen}>
         <CommandInput placeholder="Search components by name..." />

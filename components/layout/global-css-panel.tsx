@@ -8,9 +8,17 @@ import { Button } from "@/components/ui/button";
 import { useAppLayout } from "./app-layout-provider";
 
 export function GlobalCssPanel() {
-  const { rightCollapsed, toggleRightCollapse } = useAppLayout();
+  const { isMobile, rightCollapsed, toggleRight, toggleRightCollapse } = useAppLayout();
 
-  if (rightCollapsed) {
+  const handleCollapseClick = () => {
+    if (isMobile) {
+      toggleRight();
+    } else {
+      toggleRightCollapse();
+    }
+  };
+
+  if (rightCollapsed && !isMobile) {
     return (
       <div className="flex h-full flex-col items-center pt-4">
         <Button
@@ -34,8 +42,8 @@ export function GlobalCssPanel() {
             variant="ghost"
             size="icon"
             className="size-8"
-            onClick={toggleRightCollapse}
-            aria-label="Collapse CSS sidebar"
+            onClick={handleCollapseClick}
+            aria-label={isMobile ? "Toggle CSS sidebar" : "Collapse CSS sidebar"}
           >
             <PanelRightClose className="size-4" />
           </Button>
